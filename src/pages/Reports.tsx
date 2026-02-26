@@ -121,7 +121,7 @@ const Reports: React.FC = () => {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                     <h3 className="font-bold text-slate-900 mb-6">Tendencia de Asistencia</h3>
                     <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0}>
                             <BarChart data={chartData.trendData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} />
@@ -143,7 +143,7 @@ const Reports: React.FC = () => {
                     <h3 className="font-bold text-slate-900 mb-6">Proporción en el periodo</h3>
                     <div className="h-[300px] w-full flex items-center justify-center">
                         {chartData.pieData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0}>
                                 <PieChart>
                                     <Pie
                                         data={chartData.pieData}

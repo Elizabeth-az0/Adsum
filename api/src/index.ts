@@ -15,7 +15,17 @@ type UserPayload = {
 
 const app = new Hono<{ Bindings: Bindings, Variables: { user: UserPayload } }>()
 
-app.use('/api/*', cors())
+app.use(
+    '/api/*',
+    cors({
+        origin: '*', // En producción podrías restringirlo a 'https://adsum.pages.dev'
+        allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
+        allowMethods: ['POST', 'GET', 'OPTIONS', 'PUT', 'DELETE'],
+        exposeHeaders: ['Content-Length'],
+        maxAge: 600,
+        credentials: true,
+    })
+)
 
 async function hashPassword(password: string): Promise<string> {
     const msgBuffer = new TextEncoder().encode(password)
@@ -55,7 +65,10 @@ app.post('/api/login', async (c) => {
 
 // Middleware for authentication
 app.use('/api/*', async (c, next) => {
-    if (c.req.path === '/api/login') return next()
+    // Exclude login and CORS preflight options
+    if (c.req.method === 'OPTIONS' || c.req.path === '/api/login') {
+        return next()
+    }
 
     const authHeader = c.req.header('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -67,8 +80,8 @@ app.use('/api/*', async (c, next) => {
         const payload = await verify(token, c.env.JWT_SECRET)
         c.set('user', payload as UserPayload)
         await next()
-    } catch (e) {
-        return c.json({ error: 'Token inválido o expirado' }, 401)
+    } catch (e: any) {
+        return c.json({ error: 'Token inválido', details: e.message }, 401)
     }
 })
 

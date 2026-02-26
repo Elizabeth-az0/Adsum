@@ -13,7 +13,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [fontSize, setFontSizeState] = useState<FontSize>('normal');
 
     useEffect(() => {
-        const storedSize = localStorage.getItem('asistencia_font_size') as FontSize;
+        const storedSize = localStorage.getItem('adsum_font_size') as FontSize;
         if (storedSize) {
             setFontSizeState(storedSize);
         }
@@ -21,7 +21,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const setFontSize = (size: FontSize) => {
         setFontSizeState(size);
-        localStorage.setItem('asistencia_font_size', size);
+        localStorage.setItem('adsum_font_size', size);
     };
 
     return (

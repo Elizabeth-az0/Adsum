@@ -34,7 +34,7 @@ const Login: React.FC = () => {
                     <div className="bg-primary-50 p-4 rounded-full mb-4">
                         <School className="w-12 h-12 text-primary-600" />
                     </div>
-                    <h1 className="text-3xl font-bold">AsistenciaPro</h1>
+                    <h1 className="text-3xl font-bold">Adsum</h1>
                     <p className="text-slate-500 mt-2">Gestión escolar inteligente</p>
                 </div>
 

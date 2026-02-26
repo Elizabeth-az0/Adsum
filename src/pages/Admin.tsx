@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { UserPlus, Trash2, Shield, School, User, Pencil, X } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Admin: React.FC = () => {
     const { data, saveData, resetData, updateUser } = useData();
@@ -10,6 +11,7 @@ const Admin: React.FC = () => {
     // User Form State
     const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'PROFESSOR' as 'PROFESSOR' | 'DIRECTOR' });
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
+    const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
     if (user?.role !== 'DIRECTOR') {
         return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
@@ -56,24 +58,29 @@ const Admin: React.FC = () => {
     };
 
     const handleDeleteUser = (userId: string) => {
-        const userToDelete = data.users.find(u => u.id === userId);
-        if (!userToDelete) return;
+        const userObj = data.users.find(u => u.id === userId);
+        if (!userObj) return;
 
         if (userId === user?.id) {
             alert('No puedes eliminar tu propio usuario');
             return;
         }
 
-        if (userToDelete.username === 'director') {
+        if (userObj.username === 'director') {
             alert('No puedes eliminar al director principal del sistema.');
             return;
         }
 
-        if (window.confirm('¿Eliminar profesor del sistema?')) {
+        setUserToDelete(userId);
+    };
+
+    const confirmDelete = () => {
+        if (userToDelete) {
             saveData({
                 ...data,
-                users: data.users.filter(u => u.id !== userId)
+                users: data.users.filter(u => u.id !== userToDelete)
             });
+            setUserToDelete(null);
         }
     };
 
@@ -95,7 +102,7 @@ const Admin: React.FC = () => {
 
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6">
-                {/* Create/Edit User */}
+                {/* Create User Form */}
                 <div className="lg:col-span-1">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 sticky top-8">
                         <div className="flex items-center justify-between mb-6">
@@ -103,13 +110,8 @@ const Admin: React.FC = () => {
                                 <div className="p-2 bg-primary-50 text-primary-600 rounded-lg">
                                     <UserPlus className="w-5 h-5" />
                                 </div>
-                                <h3 className="font-bold text-slate-900">{editingUserId ? 'Editar Profesor' : 'Crear Profesor'}</h3>
+                                <h3 className="font-bold text-slate-900">Crear Profesor</h3>
                             </div>
-                            {editingUserId && (
-                                <button onClick={cancelEditUser} className="text-slate-400 hover:text-slate-600">
-                                    <X className="w-5 h-5" />
-                                </button>
-                            )}
                         </div>
 
                         <form onSubmit={handleAddUser} className="space-y-4">
@@ -145,9 +147,10 @@ const Admin: React.FC = () => {
                             </div>
                             <button
                                 type="submit"
-                                className="w-full bg-slate-900 text-white py-3 rounded-xl font-medium hover:bg-slate-800 transition-colors"
+                                className="w-full bg-slate-900 text-white py-3 rounded-xl font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
                             >
-                                {editingUserId ? 'Actualizar Profesor' : 'Crear Profesor'}
+                                <UserPlus className="w-5 h-5" />
+                                Crear Profesor
                             </button>
                         </form>
                     </div>
@@ -191,6 +194,79 @@ const Admin: React.FC = () => {
                         </div>
                     ))}
                 </div>
+                {/* Modals */}
+                {editingUserId && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden scale-in animate-in zoom-in-95 duration-200">
+                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-primary-50">
+                                <h2 className="text-xl font-bold text-primary-900 flex items-center gap-2">
+                                    <Pencil className="w-5 h-5" />
+                                    Editar Profesor
+                                </h2>
+                                <button onClick={cancelEditUser} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+                            <div className="p-6">
+                                <form onSubmit={handleAddUser} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>
+                                        <input
+                                            type="text"
+                                            value={newUser.name}
+                                            onChange={e => setNewUser({ ...newUser, name: e.target.value })}
+                                            className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Usuario</label>
+                                        <input
+                                            type="text"
+                                            value={newUser.username}
+                                            onChange={e => setNewUser({ ...newUser, username: e.target.value })}
+                                            className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+                                        <input
+                                            type="password"
+                                            value={newUser.password}
+                                            onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                                            className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="pt-4 flex justify-end gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={cancelEditUser}
+                                            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-medium transition-colors"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="px-4 py-2 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors shadow-sm shadow-primary-600/20"
+                                        >
+                                            Actualizar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <ConfirmModal
+                    isOpen={!!userToDelete}
+                    title="Eliminar Profesor"
+                    message="¿Estás seguro de que quieres eliminar a este profesor? Esta acción no se puede deshacer."
+                    onConfirm={confirmDelete}
+                    onCancel={() => setUserToDelete(null)}
+                />
             </div>
         </div>
     );

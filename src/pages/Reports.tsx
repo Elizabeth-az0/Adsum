@@ -3,67 +3,87 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Reports: React.FC = () => {
     const { data, resetData } = useData();
     const { user } = useAuth();
     const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month'>('week');
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
     const myClasses = data.classes.filter(c =>
         user?.role === 'DIRECTOR' || c.professorId === user?.id
     );
     const myClassIds = myClasses.map(c => c.id);
 
-    // Risk List
+    // Filter relevant attendance records based on time filter
+    const filteredAttendance = useMemo(() => {
+        const now = new Date();
+        now.setHours(23, 59, 59, 999);
+        const threshold = new Date(now);
+
+        if (timeFilter === 'today') {
+            threshold.setHours(0, 0, 0, 0);
+        } else if (timeFilter === 'week') {
+            threshold.setDate(threshold.getDate() - 7);
+        } else if (timeFilter === 'month') {
+            threshold.setMonth(threshold.getMonth() - 1);
+        }
+
+        return data.attendance.filter(r => {
+            const rDate = new Date(r.date + 'T12:00:00'); // Normalize 
+            return myClassIds.includes(r.classId) && rDate >= threshold && rDate <= now;
+        });
+    }, [data.attendance, timeFilter, myClassIds]);
+
+    // Risk List (based on historical total, unaffected by filter for accuracy of 'Riesgo')
     const riskStudents = useMemo(() => {
         return Object.values(data.students)
             .filter(s => s.risk && myClassIds.some(cid => data.classes.find(c => c.id === cid)?.studentIds.includes(s.id)))
-            .sort((a, b) => (a.attendanceHistory.present / a.attendanceHistory.total) - (b.attendanceHistory.present / b.attendanceHistory.total));
+            .sort((a, b) => {
+                const aRate = a.attendanceHistory.total ? (a.attendanceHistory.present / a.attendanceHistory.total) : 0;
+                const bRate = b.attendanceHistory.total ? (b.attendanceHistory.present / b.attendanceHistory.total) : 0;
+                return aRate - bRate;
+            });
     }, [data.students, myClassIds, data.classes]);
 
     // Chart Data
     const chartData = useMemo(() => {
-        // Pie Chart Data (Aggregate)
         let totalPresent = 0;
         let totalAbsent = 0;
         let totalJustified = 0;
 
-        // Bar Chart Data (Trend - Last 5 days)
-        const last5Days = Array.from({ length: 5 }, (_, i) => {
+        // Bar Chart Data (Trend based on filter)
+        let daysToGenerate = 5;
+        if (timeFilter === 'today') daysToGenerate = 1;
+        if (timeFilter === 'week') daysToGenerate = 7;
+        if (timeFilter === 'month') daysToGenerate = 30;
+
+        const trendDays = Array.from({ length: daysToGenerate }, (_, i) => {
             const d = new Date();
-            d.setDate(d.getDate() - (4 - i));
+            d.setDate(d.getDate() - (daysToGenerate - 1 - i));
             return d.toISOString().split('T')[0];
         });
 
-        const trendData = last5Days.map(date => {
-            const dayRecords = data.attendance.filter(r => r.date === date && myClassIds.includes(r.classId));
+        const trendData = trendDays.map(dateStr => {
+            const dayRecords = filteredAttendance.filter(r => r.date === dateStr);
             let p = 0, a = 0, j = 0;
             dayRecords.forEach(rec => {
                 rec.records.forEach(r => {
-                    if (r.status === 'PRESENT') p++;
-                    if (r.status === 'ABSENT') a++;
-                    if (r.status === 'JUSTIFIED') j++;
+                    if (r.status === 'PRESENT') { p++; totalPresent++; }
+                    if (r.status === 'ABSENT') { a++; totalAbsent++; }
+                    if (r.status === 'JUSTIFIED') { j++; totalJustified++; }
                 });
             });
-            return {
-                name: new Date(date).toLocaleDateString('es-ES', { weekday: 'short' }),
-                Presentes: p,
-                Ausentes: a,
-                Justificados: j
-            };
-        });
 
-        // Aggregate totals from all history for Pie Chart
-        // Or should it respect the time filter? Requirement says "Métricas Clave: Asistencia histórica total".
-        // Let's use historical total for Pie Chart as per requirement implies "proporción histórica".
-
-        Object.values(data.students).forEach(s => {
-            // Only count if student is in my classes
-            if (myClassIds.some(cid => data.classes.find(c => c.id === cid)?.studentIds.includes(s.id))) {
-                totalPresent += s.attendanceHistory.present;
-                totalAbsent += s.attendanceHistory.absent;
-                totalJustified += s.attendanceHistory.justified;
+            // Adjust label based on filter length to avoid crowding
+            let name = new Date(dateStr + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short' });
+            if (timeFilter === 'month') {
+                const d = new Date(dateStr + 'T12:00:00');
+                name = `${d.getDate()}/${d.getMonth() + 1}`;
             }
+
+            return { name, Presentes: p, Ausentes: a, Justificados: j };
         });
 
         const pieData = [
@@ -73,7 +93,7 @@ const Reports: React.FC = () => {
         ].filter(d => d.value > 0);
 
         return { trendData, pieData };
-    }, [data.attendance, data.students, myClassIds, data.classes]);
+    }, [filteredAttendance, timeFilter]);
 
     return (
         <div className="space-y-8">
@@ -99,20 +119,20 @@ const Reports: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Bar Chart */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <h3 className="font-bold text-slate-900 mb-6">Tendencia de Asistencia (Últimos 5 días)</h3>
+                    <h3 className="font-bold text-slate-900 mb-6">Tendencia de Asistencia</h3>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData.trendData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                <YAxis axisLine={false} tickLine={false} />
+                                <YAxis axisLine={false} tickLine={false} allowDecimals={false} />
                                 <Tooltip
                                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                 />
                                 <Legend />
-                                <Bar dataKey="Presentes" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="Ausentes" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="Justificados" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Presentes" fill="#22c55e" radius={[4, 4, 0, 0]} stackId={timeFilter === 'month' ? "a" : undefined} />
+                                <Bar dataKey="Ausentes" fill="#ef4444" radius={[4, 4, 0, 0]} stackId={timeFilter === 'month' ? "a" : undefined} />
+                                <Bar dataKey="Justificados" fill="#f59e0b" radius={[4, 4, 0, 0]} stackId={timeFilter === 'month' ? "a" : undefined} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -120,27 +140,31 @@ const Reports: React.FC = () => {
 
                 {/* Pie Chart */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <h3 className="font-bold text-slate-900 mb-6">Proporción Histórica</h3>
+                    <h3 className="font-bold text-slate-900 mb-6">Proporción en el periodo</h3>
                     <div className="h-[300px] w-full flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={chartData.pieData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={100}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {chartData.pieData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
+                        {chartData.pieData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={chartData.pieData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={100}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {chartData.pieData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <p className="text-slate-500">No hay datos de asistencia para el periodo seleccionado.</p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -152,8 +176,8 @@ const Reports: React.FC = () => {
                         <AlertTriangle className="w-6 h-6" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-slate-900">Estudiantes en Riesgo</h3>
-                        <p className="text-sm text-slate-500">Asistencia por debajo del 75%</p>
+                        <h3 className="font-bold text-slate-900">Estudiantes en Riesgo Histórico</h3>
+                        <p className="text-sm text-slate-500">Asistencia histórica por debajo del 75%</p>
                     </div>
                 </div>
 
@@ -163,14 +187,15 @@ const Reports: React.FC = () => {
                             <tr className="border-b border-slate-100 text-slate-500 text-sm">
                                 <th className="pb-4 font-medium">Estudiante</th>
                                 <th className="pb-4 font-medium">Asistencia</th>
-                                <th className="pb-4 font-medium">Faltas</th>
+                                <th className="pb-4 font-medium">Faltas totales</th>
                                 <th className="pb-4 font-medium">Estado</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {riskStudents.length > 0 ? (
                                 riskStudents.map(student => {
-                                    const rate = Math.round((student.attendanceHistory.present / student.attendanceHistory.total) * 100);
+                                    const rawRate = (student.attendanceHistory.present / student.attendanceHistory.total) * 100;
+                                    const rate = isNaN(rawRate) ? 0 : Math.round(rawRate);
                                     return (
                                         <tr key={student.id} className="group hover:bg-slate-50 transition-colors">
                                             <td className="py-4">
@@ -208,17 +233,24 @@ const Reports: React.FC = () => {
             {/* Panic Button */}
             <div className="flex justify-end pt-8 border-t border-slate-200">
                 <button
-                    onClick={() => {
-                        if (window.confirm('¿Estás seguro de que deseas reiniciar todos los datos? Esta acción no se puede deshacer.')) {
-                            resetData();
-                        }
-                    }}
+                    onClick={() => setIsResetModalOpen(true)}
                     className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
                 >
                     <RefreshCw className="w-4 h-4" />
                     Reiniciar Datos de Demostración
                 </button>
             </div>
+
+            <ConfirmModal
+                isOpen={isResetModalOpen}
+                title="Reiniciar Datos"
+                message="¿Estás seguro de que deseas reiniciar todos los datos? Esta acción borrará todas las aulas, alumnos y asistencias, restaurando todo a los valores de fábrica. No se puede deshacer."
+                onConfirm={() => {
+                    setIsResetModalOpen(false);
+                    resetData();
+                }}
+                onCancel={() => setIsResetModalOpen(false)}
+            />
         </div>
     );
 };

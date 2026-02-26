@@ -44,7 +44,7 @@ const Layout: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex" style={{ fontSize: `${getScale()}em` }}>
+        <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row" style={{ fontSize: `${getScale()}em` }}>
             {/* Mobile Menu Overlay */}
             {isMobileMenuOpen && (
                 <div
@@ -63,7 +63,7 @@ const Layout: React.FC = () => {
                         <div className="p-2 bg-primary-50 rounded-xl">
                             <School className="w-8 h-8" />
                         </div>
-                        <span className="text-xl font-bold text-slate-900">AsistenciaPro</span>
+                        <span className="text-xl font-bold text-slate-900">Adsum</span>
                     </div>
                 </div>
 
@@ -125,7 +125,7 @@ const Layout: React.FC = () => {
                         <div className="p-2 bg-primary-50 text-primary-600 rounded-lg">
                             <School className="w-6 h-6" />
                         </div>
-                        <span className="font-bold text-slate-900">AsistenciaPro</span>
+                        <span className="font-bold text-slate-900">Adsum</span>
                     </div>
                     <button
                         onClick={() => setIsMobileMenuOpen(true)}

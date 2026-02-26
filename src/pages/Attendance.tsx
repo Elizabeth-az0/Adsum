@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Trash2, Check, X, Clock, Save, CheckCircle2, ArrowLeft, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { AttendanceRecord } from '../types';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Attendance: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -18,6 +19,7 @@ const Attendance: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [error, setError] = useState<string>('');
     const [success, setSuccess] = useState<string>('');
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     // Filter classes available to the user
     const myClasses = data.classes.filter(c =>
@@ -98,7 +100,7 @@ const Attendance: React.FC = () => {
             classId: selectedClass.id,
             records: Object.entries(attendanceState).map(([studentId, status]) => ({
                 studentId,
-                status
+                status: status as 'PRESENT' | 'ABSENT' | 'JUSTIFIED'
             }))
         };
 
@@ -116,21 +118,25 @@ const Attendance: React.FC = () => {
     };
 
     const handleDelete = () => {
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = () => {
         if (!selectedClass) return;
         const todayISO = new Date().toISOString().split('T')[0];
-        if (window.confirm('¿Seguro que deseas eliminar el registro de asistencia de hoy para esta clase?')) {
-            try {
-                deleteAttendance(selectedClass.id, todayISO, user);
-                setAttendanceState({});
-                setSuccess('Registro eliminado correctamente.');
-                setError('');
-                setTimeout(() => {
-                    setSuccess('');
-                    setSelectedClassId(''); // Return to class list
-                }, 2000);
-            } catch (err: any) {
-                setError(err.message || 'Hubo un error al eliminar el registro.');
-            }
+        try {
+            deleteAttendance(selectedClass.id, todayISO, user);
+            setAttendanceState({});
+            setSuccess('Registro eliminado correctamente.');
+            setError('');
+            setIsDeleteModalOpen(false);
+            setTimeout(() => {
+                setSuccess('');
+                setSelectedClassId(''); // Return to class list
+            }, 2000);
+        } catch (err: any) {
+            setError(err.message || 'Hubo un error al eliminar el registro.');
+            setIsDeleteModalOpen(false);
         }
     };
 
@@ -326,6 +332,14 @@ const Attendance: React.FC = () => {
                     </div>
                 ))}
             </div>
+
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                title="Eliminar Registro"
+                message="¿Seguro que deseas eliminar el registro de asistencia de hoy para esta clase? Esta acción no se puede deshacer y los reportes se actualizarán."
+                onConfirm={confirmDelete}
+                onCancel={() => setIsDeleteModalOpen(false)}
+            />
         </div>
     );
 };

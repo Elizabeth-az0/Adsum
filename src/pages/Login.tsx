@@ -17,7 +17,11 @@ const Login: React.FC = () => {
         setError('');
 
         try {
-            const success = await login({ username, password });
+            // Prevenir errores comunes de tipeo (espacios en blanco accidental o mayusculas)
+            const cleanUsername = username.trim().toLowerCase();
+            const cleanPassword = password.trim();
+
+            const success = await login({ username: cleanUsername, password: cleanPassword });
             if (success) {
                 navigate('/');
             } else {

@@ -3,16 +3,17 @@ import type { AppData, ClassGroup, Student, AttendanceRecord, User } from '../ty
 
 interface DataContextType {
     data: AppData;
-    addClass: (newClass: Omit<ClassGroup, 'id'>) => void;
-    addStudentToClass: (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>) => void;
-    removeStudentFromClass: (classId: string, studentId: string) => void;
-    saveAttendance: (record: AttendanceRecord) => void;
+    addClass: (newClass: Omit<ClassGroup, 'id'>, user: User | null) => void;
+    deleteClass: (classId: string, user: User | null) => void;
+    addStudentToClass: (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => void;
+    removeStudentFromClass: (classId: string, studentId: string, user: User | null) => void;
+    saveAttendance: (record: AttendanceRecord, user?: User | null) => void;
     saveData: (newData: AppData) => void;
     resetData: () => void;
     getClassStats: (classId: string) => { present: number; absent: number; justified: number; total: number };
     updateUser: (id: string, updatedUser: Partial<User>) => void;
-    updateClass: (id: string, updatedClass: Partial<ClassGroup>) => void;
-    deleteAttendance: (classId: string, date: string) => void;
+    updateClass: (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => void;
+    deleteAttendance: (classId: string, date: string, user?: User | null) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -40,14 +41,16 @@ const INITIAL_DATA: AppData = {
         {
             id: 'c1',
             name: 'Matemáticas 1A',
-            room: 'Aula 101',
+            grado: '1ro Secundaria',
+            seccion: 'A',
             professorId: '2',
             studentIds: ['s1', 's2', 's3', 's4', 's5'],
         },
         {
             id: 'c2',
             name: 'Historia 2B',
-            room: 'Aula 204',
+            grado: '2do Secundaria',
+            seccion: 'B',
             professorId: '2',
             studentIds: ['s6', 's7'],
         },
@@ -82,13 +85,33 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('asistencia_data', JSON.stringify(newData));
     };
 
-    const addClass = (newClass: Omit<ClassGroup, 'id'>) => {
+    const addClass = (newClass: Omit<ClassGroup, 'id'>, user: User | null) => {
+        if (user?.role !== 'DIRECTOR') throw new Error('Carencia de permisos: Sólo los directores pueden crear aulas.');
         const id = Math.random().toString(36).substr(2, 9);
         const classWithId = { ...newClass, id, studentIds: [] };
         saveData({ ...data, classes: [...data.classes, classWithId] });
     };
 
-    const addStudentToClass = (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>) => {
+    const deleteClass = (classId: string, user: User | null) => {
+        if (user?.role !== 'DIRECTOR') throw new Error('Carencia de permisos: Sólo los directores pueden eliminar aulas.');
+
+        // Find students that only belong to this class to potentially clean them up (for real DB, usually cascading deletes)
+        // Here we just remove the class mapping.
+        saveData({
+            ...data,
+            classes: data.classes.filter(c => c.id !== classId),
+            attendance: data.attendance.filter(a => a.classId !== classId)
+        });
+    };
+
+    const addStudentToClass = (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => {
+        if (!user) throw new Error('No autenticado');
+        const c = data.classes.find(c => c.id === classId);
+        if (!c) throw new Error('Aula no encontrada');
+        if (user.role === 'PROFESSOR' && c.professorId !== user.id) {
+            throw new Error('Carencia de permisos: No puedes agregar alumnos a un aula que no te pertenece.');
+        }
+
         const studentId = Math.random().toString(36).substr(2, 9);
         const newStudent: Student = {
             ...student,
@@ -112,7 +135,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
     };
 
-    const removeStudentFromClass = (classId: string, studentId: string) => {
+    const removeStudentFromClass = (classId: string, studentId: string, user: User | null) => {
+        if (!user) throw new Error('No autenticado');
+        const c = data.classes.find(c => c.id === classId);
+        if (!c) throw new Error('Aula no encontrada');
+        if (user.role === 'PROFESSOR' && c.professorId !== user.id) {
+            throw new Error('Carencia de permisos: No puedes remover alumnos de un aula que no te pertenece.');
+        }
+
         const updatedClasses = data.classes.map(c => {
             if (c.id === classId) {
                 return { ...c, studentIds: c.studentIds.filter(id => id !== studentId) };
@@ -129,14 +159,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveData({ ...data, users: updatedUsers });
     };
 
-    const updateClass = (id: string, updatedClass: Partial<ClassGroup>) => {
+    const updateClass = (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => {
+        if (user?.role !== 'DIRECTOR') throw new Error('Carencia de permisos: Sólo los directores pueden editar aulas.');
         const updatedClasses = data.classes.map(c =>
             c.id === id ? { ...c, ...updatedClass } : c
         );
         saveData({ ...data, classes: updatedClasses });
     };
 
-    const saveAttendance = (record: AttendanceRecord) => {
+    const saveAttendance = (record: AttendanceRecord, user?: User | null) => {
+        // Backend Simulation Security Validation
+        if (!user) throw new Error('Usuario no autenticado');
+        const classInfo = data.classes.find(c => c.id === record.classId);
+        if (!classInfo) throw new Error('Clase no encontrada');
+        if (user.role === 'PROFESSOR' && classInfo.professorId !== user.id) {
+            throw new Error('No tienes permisos para modificar asistencias de esta aula');
+        }
+
         const updatedStudents = { ...data.students };
 
         // Check if updating an existing record based on classId and date
@@ -195,7 +234,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveData({ ...data, attendance: newAttendance, students: updatedStudents });
     };
 
-    const deleteAttendance = (classId: string, date: string) => {
+    const deleteAttendance = (classId: string, date: string, user?: User | null) => {
+        // Backend Simulation Security Validation
+        if (!user) throw new Error('Usuario no autenticado');
+        const classInfo = data.classes.find(c => c.id === classId);
+        if (!classInfo) throw new Error('Clase no encontrada');
+        if (user.role === 'PROFESSOR' && classInfo.professorId !== user.id) {
+            throw new Error('No tienes permisos para remover asistencias de esta aula');
+        }
+
         const existingRecordIndex = data.attendance.findIndex(r => r.classId === classId && r.date === date);
         if (existingRecordIndex === -1) return;
 
@@ -252,7 +299,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <DataContext.Provider value={{ data, addClass, addStudentToClass, removeStudentFromClass, saveAttendance, saveData, resetData, getClassStats, updateUser, updateClass, deleteAttendance }}>
+        <DataContext.Provider value={{ data, addClass, deleteClass, addStudentToClass, removeStudentFromClass, saveAttendance, saveData, resetData, getClassStats, updateUser, updateClass, deleteAttendance }}>
             {children}
         </DataContext.Provider>
     );

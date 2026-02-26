@@ -20,6 +20,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+const DirectorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  if (user?.role !== 'DIRECTOR') {
+    return <Navigate to="/" />;
+  }
+  return <>{children}</>;
+};
+
 function App() {
   return (
     <HashRouter>
@@ -37,7 +45,11 @@ function App() {
                 <Route path="attendance" element={<Attendance />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="classes" element={<Classes />} />
-                <Route path="admin" element={<Admin />} />
+                <Route path="admin" element={
+                  <DirectorRoute>
+                    <Admin />
+                  </DirectorRoute>
+                } />
                 <Route path="settings" element={<Settings />} />
                 <Route path="guides" element={<Guides />} />
               </Route>

@@ -31,7 +31,7 @@ const Layout: React.FC = () => {
         { name: 'Asistencia', href: '/attendance', icon: ClipboardCheck, roles: ['DIRECTOR', 'PROFESSOR'] },
         { name: 'Reportes', href: '/reports', icon: BarChart3, roles: ['DIRECTOR', 'PROFESSOR'] },
         { name: 'Gestión Aulas', href: '/classes', icon: Users, roles: ['DIRECTOR', 'PROFESSOR'] },
-        { name: 'Administración', href: '/admin', icon: School, roles: ['DIRECTOR'] },
+        { name: 'Profesores', href: '/admin', icon: School, roles: ['DIRECTOR'] },
         { name: 'Ajustes', href: '/settings', icon: SettingsIcon, roles: ['DIRECTOR', 'PROFESSOR'] },
     ];
 

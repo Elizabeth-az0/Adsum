@@ -36,7 +36,8 @@ export interface AttendanceRecord {
 export interface ClassGroup {
     id: string;
     name: string; // e.g. "Matemáticas 1A"
-    room: string; // e.g. "Aula 101"
+    grado: string; // e.g. "1ro"
+    seccion: string; // e.g. "A"
     professorId: string; // User ID
     studentIds: string[];
 }

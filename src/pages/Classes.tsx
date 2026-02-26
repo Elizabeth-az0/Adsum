@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Trash2, Search, UserPlus, Users, AlertTriangle, School, X, Pencil } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Classes: React.FC = () => {
     const { data, addStudentToClass, removeStudentFromClass, addClass, updateClass, deleteClass } = useData();
@@ -22,6 +23,10 @@ const Classes: React.FC = () => {
     // Class Form State for Director
     const [newClass, setNewClass] = useState({ name: '', grado: '', seccion: '', professorId: '' });
     const [editingClassId, setEditingClassId] = useState<string | null>(null);
+
+    // Deletion Modal States
+    const [classToDelete, setClassToDelete] = useState<string | null>(null);
+    const [studentToRemove, setStudentToRemove] = useState<string | null>(null);
 
     const selectedClass = data.classes.find(c => c.id === selectedClassId);
 
@@ -246,13 +251,7 @@ const Classes: React.FC = () => {
                                             <Pencil className="w-5 h-5" />
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                try {
-                                                    if (window.confirm('¿Eliminar aula y quitar todos sus alumnos asignados a este nivel?')) {
-                                                        deleteClass(c.id, user);
-                                                    }
-                                                } catch (e: any) { alert(e.message); }
-                                            }}
+                                            onClick={() => setClassToDelete(c.id)}
                                             className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                         >
                                             <Trash2 className="w-5 h-5" />
@@ -367,13 +366,7 @@ const Classes: React.FC = () => {
                                                     </div>
 
                                                     <button
-                                                        onClick={() => {
-                                                            try {
-                                                                if (window.confirm(`¿Eliminar a ${student.firstName} de esta clase?`)) {
-                                                                    removeStudentFromClass(selectedClassId, student.id, user);
-                                                                }
-                                                            } catch (e: any) { alert(e.message); }
-                                                        }}
+                                                        onClick={() => setStudentToRemove(student.id)}
                                                         className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                                                         title="Eliminar"
                                                     >
@@ -397,6 +390,115 @@ const Classes: React.FC = () => {
                     )}
                 </>
             )}
+            {/* Edit Class Modal */}
+            {editingClassId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden scale-in animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-primary-50">
+                            <h2 className="text-xl font-bold text-primary-900 flex items-center gap-2">
+                                <Pencil className="w-5 h-5" />
+                                Editar Aula
+                            </h2>
+                            <button onClick={cancelEditClass} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <form onSubmit={handleAddClass} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Descriptivo</label>
+                                    <input
+                                        type="text"
+                                        value={newClass.name}
+                                        onChange={e => setNewClass({ ...newClass, name: e.target.value })}
+                                        className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Grado</label>
+                                    <input
+                                        type="text"
+                                        value={newClass.grado}
+                                        onChange={e => setNewClass({ ...newClass, grado: e.target.value })}
+                                        className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Sección / Sala</label>
+                                    <input
+                                        type="text"
+                                        value={newClass.seccion}
+                                        onChange={e => setNewClass({ ...newClass, seccion: e.target.value })}
+                                        className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Profesor Asignado</label>
+                                    <select
+                                        value={newClass.professorId}
+                                        onChange={e => setNewClass({ ...newClass, professorId: e.target.value })}
+                                        className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                        required
+                                    >
+                                        <option value="">Seleccionar Profesor</option>
+                                        {data.users.filter(u => u.role === 'PROFESSOR').map(u => (
+                                            <option key={u.id} value={u.id}>{u.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="pt-4 flex justify-end gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={cancelEditClass}
+                                        className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-medium transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors shadow-sm shadow-primary-600/20"
+                                    >
+                                        Actualizar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ConfirmModal
+                isOpen={!!classToDelete}
+                title="Eliminar Aula"
+                message="¿Estás seguro de que deseas eliminar esta aula? Se quitará a todos los alumnos asignados. Esta acción no se puede deshacer."
+                onConfirm={() => {
+                    if (classToDelete) {
+                        try {
+                            deleteClass(classToDelete, user);
+                            setClassToDelete(null);
+                        } catch (e: any) { alert(e.message); }
+                    }
+                }}
+                onCancel={() => setClassToDelete(null)}
+            />
+
+            <ConfirmModal
+                isOpen={!!studentToRemove}
+                title="Remover Estudiante"
+                message="¿Remover a este estudiante del aula actual? Sus registros de asistencia podrían verse afectados."
+                onConfirm={() => {
+                    if (studentToRemove && selectedClassId) {
+                        try {
+                            removeStudentFromClass(selectedClassId, studentToRemove, user);
+                            setStudentToRemove(null);
+                        } catch (e: any) { alert(e.message); }
+                    }
+                }}
+                onCancel={() => setStudentToRemove(null)}
+            />
         </div>
     );
 };

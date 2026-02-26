@@ -1,0 +1,18 @@
+{
+    "name": "adsum-api",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "npx wrangler dev src/index.ts",
+        "deploy": "npx wrangler deploy --minify src/index.ts",
+        "db:init": "npx wrangler d1 execute adsum-db --file=./schema.sql --local"
+    },
+    "dependencies": {
+        "hono": "^4.2.0"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "^4.20240405.0",
+        "wrangler": "^3.48.0",
+        "typescript": "^5.0.4"
+    }
+}

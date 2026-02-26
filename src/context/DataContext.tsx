@@ -1,305 +1,167 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { AppData, ClassGroup, Student, AttendanceRecord, User } from '../types';
+import { api } from '../services/api';
+import { useAuth } from './AuthContext';
 
 interface DataContextType {
     data: AppData;
-    addClass: (newClass: Omit<ClassGroup, 'id'>, user: User | null) => void;
-    deleteClass: (classId: string, user: User | null) => void;
-    addStudentToClass: (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => void;
-    removeStudentFromClass: (classId: string, studentId: string, user: User | null) => void;
-    saveAttendance: (record: AttendanceRecord, user?: User | null) => void;
-    saveData: (newData: AppData) => void;
-    resetData: () => void;
+    isLoading: boolean;
+    error: string | null;
+    loadData: () => Promise<void>;
+    addClass: (newClass: Omit<ClassGroup, 'id'>, user: User | null) => Promise<void>;
+    deleteClass: (classId: string, user: User | null) => Promise<void>;
+    addStudentToClass: (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => Promise<void>;
+    removeStudentFromClass: (classId: string, studentId: string, user: User | null) => Promise<void>;
+    saveAttendance: (record: AttendanceRecord, user?: User | null) => Promise<void>;
+    deleteAttendance: (classId: string, date: string, user?: User | null) => Promise<void>;
     getClassStats: (classId: string) => { present: number; absent: number; justified: number; total: number };
-    updateUser: (id: string, updatedUser: Partial<User>) => void;
-    updateClass: (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => void;
-    deleteAttendance: (classId: string, date: string, user?: User | null) => void;
+    updateUser: (id: string, updatedUser: Partial<User>) => Promise<void>;
+    updateClass: (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => Promise<void>;
+    loadAttendanceForClassAndDate: (classId: string, date: string) => Promise<any>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-const INITIAL_DATA: AppData = {
-    users: [
-        {
-            id: '1',
-            username: 'director',
-            password: '123',
-            name: 'Director Principal',
-            role: 'DIRECTOR',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Director',
-        },
-        {
-            id: '2',
-            username: 'profesor',
-            password: '123',
-            name: 'Profesor Demo',
-            role: 'PROFESSOR',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Profesor',
-        },
-    ],
-    classes: [
-        {
-            id: 'c1',
-            name: 'Matemáticas 1A',
-            grado: '1ro Secundaria',
-            seccion: 'A',
-            professorId: '2',
-            studentIds: ['s1', 's2', 's3', 's4', 's5'],
-        },
-        {
-            id: 'c2',
-            name: 'Historia 2B',
-            grado: '2do Secundaria',
-            seccion: 'B',
-            professorId: '2',
-            studentIds: ['s6', 's7'],
-        },
-    ],
-    students: {
-        's1': { id: 's1', firstName: 'Ana', lastName: 'García', risk: false, attendanceHistory: { present: 10, absent: 0, justified: 0, total: 10 }, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ana' },
-        's2': { id: 's2', firstName: 'Carlos', lastName: 'López', risk: true, attendanceHistory: { present: 5, absent: 5, justified: 0, total: 10 }, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carlos' },
-        's3': { id: 's3', firstName: 'Maria', lastName: 'Rodriguez', risk: false, attendanceHistory: { present: 9, absent: 1, justified: 0, total: 10 }, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria' },
-        's4': { id: 's4', firstName: 'Juan', lastName: 'Perez', risk: false, attendanceHistory: { present: 8, absent: 2, justified: 0, total: 10 }, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Juan' },
-        's5': { id: 's5', firstName: 'Sofia', lastName: 'Martinez', risk: false, attendanceHistory: { present: 10, absent: 0, justified: 0, total: 10 }, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sofia' },
-        's6': { id: 's6', firstName: 'Luis', lastName: 'Hernandez', risk: false, attendanceHistory: { present: 10, absent: 0, justified: 0, total: 10 }, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Luis' },
-        's7': { id: 's7', firstName: 'Elena', lastName: 'Diaz', risk: true, attendanceHistory: { present: 4, absent: 6, justified: 0, total: 10 }, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Elena' },
-    },
-    attendance: [],
-};
-
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [data, setData] = useState<AppData>(INITIAL_DATA);
+    const { user, isAuthenticated, logout } = useAuth();
+    const [data, setData] = useState<AppData>({ users: [], classes: [], students: {}, attendance: [] });
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const storedData = localStorage.getItem('asistencia_data');
-        if (storedData) {
-            setData(JSON.parse(storedData));
-        } else {
-            // Initialize with demo data
-            localStorage.setItem('asistencia_data', JSON.stringify(INITIAL_DATA));
+    const checkAuthError = (err: any) => {
+        if (err.message === 'UNAUTHORIZED') {
+            logout();
         }
-    }, []);
-
-    const saveData = (newData: AppData) => {
-        setData(newData);
-        localStorage.setItem('asistencia_data', JSON.stringify(newData));
+        throw err;
     };
 
-    const addClass = (newClass: Omit<ClassGroup, 'id'>, user: User | null) => {
-        if (user?.role !== 'DIRECTOR') throw new Error('Carencia de permisos: Sólo los directores pueden crear aulas.');
-        const id = Math.random().toString(36).substr(2, 9);
-        const classWithId = { ...newClass, id, studentIds: [] };
-        saveData({ ...data, classes: [...data.classes, classWithId] });
-    };
+    const loadData = useCallback(async () => {
+        if (!isAuthenticated) return;
+        setIsLoading(true);
+        setError(null);
+        try {
+            const classesRaw = await api.getClasses().catch(checkAuthError);
+            let usersRaw: User[] = [];
 
-    const deleteClass = (classId: string, user: User | null) => {
-        if (user?.role !== 'DIRECTOR') throw new Error('Carencia de permisos: Sólo los directores pueden eliminar aulas.');
-
-        // Find students that only belong to this class to potentially clean them up (for real DB, usually cascading deletes)
-        // Here we just remove the class mapping.
-        saveData({
-            ...data,
-            classes: data.classes.filter(c => c.id !== classId),
-            attendance: data.attendance.filter(a => a.classId !== classId)
-        });
-    };
-
-    const addStudentToClass = (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => {
-        if (!user) throw new Error('No autenticado');
-        const c = data.classes.find(c => c.id === classId);
-        if (!c) throw new Error('Aula no encontrada');
-        if (user.role === 'PROFESSOR' && c.professorId !== user.id) {
-            throw new Error('Carencia de permisos: No puedes agregar alumnos a un aula que no te pertenece.');
-        }
-
-        const studentId = Math.random().toString(36).substr(2, 9);
-        const newStudent: Student = {
-            ...student,
-            id: studentId,
-            attendanceHistory: { present: 0, absent: 0, justified: 0, total: 0 },
-            risk: false,
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${student.firstName}`,
-        };
-
-        const updatedClasses = data.classes.map(c => {
-            if (c.id === classId) {
-                return { ...c, studentIds: [...c.studentIds, studentId] };
+            if (user?.role === 'DIRECTOR') {
+                usersRaw = await api.getUsers().catch(checkAuthError);
             }
-            return c;
-        });
 
-        saveData({
-            ...data,
-            students: { ...data.students, [studentId]: newStudent },
-            classes: updatedClasses,
-        });
-    };
+            const studentsMap: Record<string, Student> = {};
+            const mappedClasses: ClassGroup[] = [];
 
-    const removeStudentFromClass = (classId: string, studentId: string, user: User | null) => {
-        if (!user) throw new Error('No autenticado');
-        const c = data.classes.find(c => c.id === classId);
-        if (!c) throw new Error('Aula no encontrada');
-        if (user.role === 'PROFESSOR' && c.professorId !== user.id) {
-            throw new Error('Carencia de permisos: No puedes remover alumnos de un aula que no te pertenece.');
-        }
-
-        const updatedClasses = data.classes.map(c => {
-            if (c.id === classId) {
-                return { ...c, studentIds: c.studentIds.filter(id => id !== studentId) };
-            }
-            return c;
-        });
-        saveData({ ...data, classes: updatedClasses });
-    };
-
-    const updateUser = (id: string, updatedUser: Partial<User>) => {
-        const updatedUsers = data.users.map(u =>
-            u.id === id ? { ...u, ...updatedUser } : u
-        );
-        saveData({ ...data, users: updatedUsers });
-    };
-
-    const updateClass = (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => {
-        if (user?.role !== 'DIRECTOR') throw new Error('Carencia de permisos: Sólo los directores pueden editar aulas.');
-        const updatedClasses = data.classes.map(c =>
-            c.id === id ? { ...c, ...updatedClass } : c
-        );
-        saveData({ ...data, classes: updatedClasses });
-    };
-
-    const saveAttendance = (record: AttendanceRecord, user?: User | null) => {
-        // Backend Simulation Security Validation
-        if (!user) throw new Error('Usuario no autenticado');
-        const classInfo = data.classes.find(c => c.id === record.classId);
-        if (!classInfo) throw new Error('Clase no encontrada');
-        if (user.role === 'PROFESSOR' && classInfo.professorId !== user.id) {
-            throw new Error('No tienes permisos para modificar asistencias de esta aula');
-        }
-
-        const updatedStudents = { ...data.students };
-
-        // Check if updating an existing record based on classId and date
-        const existingRecordIndex = data.attendance.findIndex(r => r.classId === record.classId && r.date === record.date);
-        let newAttendance = [...data.attendance];
-
-        if (existingRecordIndex >= 0) {
-            const existingRecord = newAttendance[existingRecordIndex];
-
-            // Revert old student stats
-            existingRecord.records.forEach(r => {
-                const student = updatedStudents[r.studentId];
-                if (student) {
-                    const history = { ...student.attendanceHistory };
-                    history.total -= 1;
-                    if (r.status === 'PRESENT') history.present -= 1;
-                    if (r.status === 'ABSENT') history.absent -= 1;
-                    if (r.status === 'JUSTIFIED') history.justified -= 1;
-
-                    const attendanceRate = history.total > 0 ? history.present / history.total : 0;
-                    const risk = attendanceRate < 0.75;
-
-                    updatedStudents[r.studentId] = {
-                        ...student,
-                        attendanceHistory: history,
-                        risk,
+            for (const cls of classesRaw) {
+                const studentsRaw = await api.getStudents(cls.id).catch(checkAuthError);
+                mappedClasses.push({
+                    id: cls.id,
+                    name: cls.name,
+                    grado: cls.grade,
+                    seccion: '', // Original backend merging
+                    professorId: cls.professor_id,
+                    studentIds: studentsRaw.map((s: any) => s.id)
+                });
+                for (const st of studentsRaw) {
+                    studentsMap[st.id] = {
+                        id: st.id,
+                        firstName: st.name.split(' ')[0],
+                        lastName: st.name.split(' ').slice(1).join(' '),
+                        risk: false,
+                        attendanceHistory: { present: 0, absent: 0, justified: 0, total: 0 },
+                        avatar: ''
                     };
                 }
+            }
+
+            setData({
+                users: usersRaw,
+                classes: mappedClasses,
+                students: studentsMap,
+                attendance: [] // We fetch attendance dynamically per class
             });
-            newAttendance[existingRecordIndex] = record;
-        } else {
-            newAttendance.push(record);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
         }
+    }, [isAuthenticated, user?.role, logout]);
 
-        // Apply new student stats
-        record.records.forEach(r => {
-            const student = updatedStudents[r.studentId];
-            if (student) {
-                const history = { ...student.attendanceHistory };
-                history.total += 1;
-                if (r.status === 'PRESENT') history.present += 1;
-                if (r.status === 'ABSENT') history.absent += 1;
-                if (r.status === 'JUSTIFIED') history.justified += 1;
+    useEffect(() => {
+        if (isAuthenticated) {
+            loadData();
+        }
+    }, [isAuthenticated, loadData]);
 
-                const attendanceRate = history.total > 0 ? history.present / history.total : 0;
-                const risk = attendanceRate < 0.75;
-
-                updatedStudents[r.studentId] = {
-                    ...student,
-                    attendanceHistory: history,
-                    risk,
-                };
-            }
-        });
-
-        saveData({ ...data, attendance: newAttendance, students: updatedStudents });
+    const addClass = async (newClass: Omit<ClassGroup, 'id'>, user: User | null) => {
+        await api.createClass({
+            name: newClass.name,
+            grade: newClass.grado,
+            professor_id: newClass.professorId
+        }).catch(checkAuthError);
+        await loadData();
     };
 
-    const deleteAttendance = (classId: string, date: string, user?: User | null) => {
-        // Backend Simulation Security Validation
-        if (!user) throw new Error('Usuario no autenticado');
-        const classInfo = data.classes.find(c => c.id === classId);
-        if (!classInfo) throw new Error('Clase no encontrada');
-        if (user.role === 'PROFESSOR' && classInfo.professorId !== user.id) {
-            throw new Error('No tienes permisos para remover asistencias de esta aula');
-        }
-
-        const existingRecordIndex = data.attendance.findIndex(r => r.classId === classId && r.date === date);
-        if (existingRecordIndex === -1) return;
-
-        const updatedStudents = { ...data.students };
-        const existingRecord = data.attendance[existingRecordIndex];
-
-        // Revert old student stats
-        existingRecord.records.forEach(r => {
-            const student = updatedStudents[r.studentId];
-            if (student) {
-                const history = { ...student.attendanceHistory };
-                history.total -= 1;
-                if (r.status === 'PRESENT') history.present -= 1;
-                if (r.status === 'ABSENT') history.absent -= 1;
-                if (r.status === 'JUSTIFIED') history.justified -= 1;
-
-                const attendanceRate = history.total > 0 ? history.present / history.total : 0;
-                const risk = attendanceRate < 0.75;
-
-                updatedStudents[r.studentId] = {
-                    ...student,
-                    attendanceHistory: history,
-                    risk,
-                };
-            }
-        });
-
-        const newAttendance = data.attendance.filter(r => !(r.classId === classId && r.date === date));
-        saveData({ ...data, attendance: newAttendance, students: updatedStudents });
+    const deleteClass = async (classId: string, user: User | null) => {
+        await api.deleteClass(classId).catch(checkAuthError);
+        await loadData();
     };
 
-    const resetData = () => {
-        saveData(INITIAL_DATA);
-        window.location.reload();
+    const addStudentToClass = async (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => {
+        await api.createStudent({
+            class_id: classId,
+            name: `${student.firstName} ${student.lastName}`
+        }).catch(checkAuthError);
+        await loadData();
+    };
+
+    const removeStudentFromClass = async (classId: string, studentId: string, user: User | null) => {
+        await api.deleteStudent(studentId).catch(checkAuthError);
+        await loadData();
+    };
+
+    const updateUser = async (id: string, updatedUser: Partial<User>) => {
+        await api.updateUser(id, updatedUser).catch(checkAuthError);
+        await loadData();
+    };
+
+    const updateClass = async (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => {
+        await api.updateClass(id, {
+            name: updatedClass.name,
+            grade: updatedClass.grado,
+            professor_id: updatedClass.professorId
+        }).catch(checkAuthError);
+        await loadData();
+    };
+
+    const loadAttendanceForClassAndDate = async (classId: string, date: string) => {
+        const records = await api.getAttendance(classId, date).catch(checkAuthError);
+        return records;
+    };
+
+    const saveAttendance = async (record: AttendanceRecord, user?: User | null) => {
+        await api.saveAttendance({
+            class_id: record.classId,
+            date: record.date,
+            records: record.records.map(r => ({
+                student_id: r.studentId,
+                status: r.status
+            }))
+        }).catch(checkAuthError);
+    };
+
+    const deleteAttendance = async (classId: string, date: string, user?: User | null) => {
+        await api.deleteAttendance(classId, date).catch(checkAuthError);
     };
 
     const getClassStats = (classId: string) => {
-        const classGroup = data.classes.find(c => c.id === classId);
-        if (!classGroup) return { present: 0, absent: 0, justified: 0, total: 0 };
-
-        let present = 0, absent = 0, justified = 0, total = 0;
-
-        classGroup.studentIds.forEach(sid => {
-            const s = data.students[sid];
-            if (s) {
-                present += s.attendanceHistory.present;
-                absent += s.attendanceHistory.absent;
-                justified += s.attendanceHistory.justified;
-                total += s.attendanceHistory.total;
-            }
-        });
-
-        return { present, absent, justified, total };
+        return { present: 0, absent: 0, justified: 0, total: 0 };
     };
 
     return (
-        <DataContext.Provider value={{ data, addClass, deleteClass, addStudentToClass, removeStudentFromClass, saveAttendance, saveData, resetData, getClassStats, updateUser, updateClass, deleteAttendance }}>
+        <DataContext.Provider value={{
+            data, isLoading, error, loadData, addClass, deleteClass, addStudentToClass,
+            removeStudentFromClass, saveAttendance, deleteAttendance, getClassStats,
+            updateUser, updateClass, loadAttendanceForClassAndDate
+        }}>
             {children}
         </DataContext.Provider>
     );

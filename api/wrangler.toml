@@ -1,0 +1,11 @@
+name = "adsum-api"
+main = "src/index.ts"
+compatibility_date = "2024-04-05"
+
+[vars]
+JWT_SECRET = "super-secret-jwt-key-for-adsum"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "adsum-db"
+database_id = "3337579a-24f3-416c-bb4d-c01a3d9ddf3b"

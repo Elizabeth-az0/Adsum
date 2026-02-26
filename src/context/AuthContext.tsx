@@ -1,79 +1,45 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import type { User } from '../types';
+import { api } from '../services/api';
 
 interface AuthContextType {
     user: User | null;
-    login: (username: string, password: string) => boolean;
+    login: (credentials: any) => Promise<boolean>;
     logout: () => void;
     isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock initial users for demo purposes if local storage is empty
-const INITIAL_USERS: User[] = [
-    {
-        id: '1',
-        username: 'director',
-        password: '123',
-        name: 'Director Principal',
-        role: 'DIRECTOR',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Director',
-    },
-    {
-        id: '2',
-        username: 'profesor',
-        password: '123',
-        name: 'Profesor Demo',
-        role: 'PROFESSOR',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Profesor',
-    },
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<User | null>(() => {
+        const storedUser = localStorage.getItem('adsum_user');
+        if (storedUser) return JSON.parse(storedUser);
+        return null;
+    });
 
-    useEffect(() => {
-        const storedUser = localStorage.getItem('asistencia_user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-    }, []);
-
-    const login = (username: string, password: string) => {
-        // In a real app, we would validate against a backend or the DataContext users list.
-        // For this standalone demo, we'll check against our hardcoded initial users AND any users in localStorage (if we were syncing users there).
-        // For simplicity in this step, let's use the hardcoded ones plus check if DataContext has more (but we can't access DataContext here easily without circular dep if not careful).
-        // Let's just use a simple check against a merged list from localStorage if available.
-
-        const storedUsersStr = localStorage.getItem('asistencia_data');
-        let allUsers = [...INITIAL_USERS];
-
-        if (storedUsersStr) {
-            const data = JSON.parse(storedUsersStr);
-            if (data.users && Array.isArray(data.users)) {
-                // Merge or use data.users. For simplicity, let's assume data.users is the source of truth if it exists.
-                // But we need to ensure the initial demo users exist there too.
-                // We will handle data initialization in DataContext.
-                // Here we will just read from localStorage 'asistencia_data' to find users.
-                allUsers = data.users;
+    const login = async (credentials: any) => {
+        try {
+            const data = await api.login(credentials);
+            if (data.token && data.user) {
+                localStorage.setItem('adsum_token', data.token);
+                // User object passed via JWT/login response
+                setUser(data.user);
+                localStorage.setItem('adsum_user', JSON.stringify(data.user));
+                return true;
             }
+            return false;
+        } catch (err) {
+            console.error('Login failed', err);
+            throw err;
         }
-
-        const foundUser = allUsers.find(u => u.username === username && u.password === password);
-
-        if (foundUser) {
-            const { password, ...userWithoutPassword } = foundUser;
-            setUser(userWithoutPassword as User);
-            localStorage.setItem('asistencia_user', JSON.stringify(userWithoutPassword));
-            return true;
-        }
-        return false;
     };
 
     const logout = () => {
         setUser(null);
-        localStorage.removeItem('asistencia_user');
+        localStorage.removeItem('adsum_user');
+        localStorage.removeItem('adsum_token');
+        window.location.href = '#/login';
     };
 
     return (

@@ -27,10 +27,8 @@ const Attendance: React.FC = () => {
     useEffect(() => {
         if (classIdParam) {
             setSelectedClassId(classIdParam);
-        } else if (myClasses.length > 0 && !selectedClassId) {
-            setSelectedClassId(myClasses[0].id);
         }
-    }, [classIdParam, myClasses, selectedClassId]);
+    }, [classIdParam]);
 
     // Initialize attendance state when class changes
     useEffect(() => {
@@ -105,12 +103,15 @@ const Attendance: React.FC = () => {
         };
 
         try {
-            saveAttendance(record);
+            saveAttendance(record, user);
             setError('');
             setSuccess('Asistencia guardada correctamente.');
-            setTimeout(() => navigate('/'), 2000);
-        } catch (err) {
-            setError('Hubo un error al guardar la asistencia.');
+            setTimeout(() => {
+                setSuccess('');
+                setSelectedClassId(''); // Return to class list
+            }, 2000);
+        } catch (err: any) {
+            setError(err.message || 'Hubo un error al guardar la asistencia.');
         }
     };
 
@@ -119,26 +120,63 @@ const Attendance: React.FC = () => {
         const todayISO = new Date().toISOString().split('T')[0];
         if (window.confirm('¿Seguro que deseas eliminar el registro de asistencia de hoy para esta clase?')) {
             try {
-                deleteAttendance(selectedClass.id, todayISO);
+                deleteAttendance(selectedClass.id, todayISO, user);
                 setAttendanceState({});
                 setSuccess('Registro eliminado correctamente.');
                 setError('');
-            } catch (err) {
-                setError('Hubo un error al eliminar el registro.');
+                setTimeout(() => {
+                    setSuccess('');
+                    setSelectedClassId(''); // Return to class list
+                }, 2000);
+            } catch (err: any) {
+                setError(err.message || 'Hubo un error al eliminar el registro.');
             }
         }
     };
 
-    if (!selectedClass) {
+    const todayISO = new Date().toISOString().split('T')[0];
+    const hasRecordToday = data.attendance.some(r => r.classId === selectedClassId && r.date === todayISO);
+
+    // If no class is selected, show the class selection grid
+    if (!selectedClassId) {
         return (
-            <div className="text-center py-12">
-                <p className="text-slate-500">No hay clases asignadas.</p>
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold text-slate-900">Seleccionar Aula</h1>
+                    <p className="text-slate-500">
+                        {user?.role === 'DIRECTOR' ? 'Vista de Director (Todas las aulas)' : 'Tus aulas asignadas'}
+                    </p>
+                </div>
+                {myClasses.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
+                        <p className="text-slate-500">No hay aulas disponibles.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {myClasses.map(cls => (
+                            <button
+                                key={cls.id}
+                                onClick={() => {
+                                    setSelectedClassId(cls.id);
+                                    setError('');
+                                    setSuccess('');
+                                }}
+                                className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow text-left flex flex-col gap-2"
+                            >
+                                <div className="flex justify-between items-start w-full">
+                                    <h3 className="text-xl font-bold text-slate-900">{cls.name}</h3>
+                                    <span className="text-sm font-medium bg-primary-50 text-primary-700 px-3 py-1 rounded-full">
+                                        {cls.room}
+                                    </span>
+                                </div>
+                                <p className="text-slate-500 text-sm mt-2">{cls.studentIds.length} Estudiantes</p>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
         );
     }
-
-    const todayISO = new Date().toISOString().split('T')[0];
-    const hasRecordToday = data.attendance.some(r => r.classId === selectedClassId && r.date === todayISO);
 
     return (
         <div className="space-y-6">
@@ -156,7 +194,7 @@ const Attendance: React.FC = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/')} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
+                    <button onClick={() => setSelectedClassId('')} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
                         <ArrowLeft className="w-6 h-6" />
                     </button>
                     <div>

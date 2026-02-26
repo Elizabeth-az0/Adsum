@@ -82,7 +82,7 @@ const Dashboard: React.FC = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Hola, {user?.name.split(' ')[0]} 👋</h1>
+                    <h1 className="text-3xl font-bold text-slate-900">Hola, {(user?.name || user?.username)?.split(' ')[0]} 👋</h1>
                     <div className="flex items-center gap-2 text-slate-500 mt-1">
                         <Calendar className="w-4 h-4" />
                         <span className="capitalize">{today}</span>

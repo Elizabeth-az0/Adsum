@@ -158,8 +158,8 @@ const Admin: React.FC = () => {
 
                 {/* User List */}
                 <div className="lg:col-span-2 space-y-4">
-                    {data.users.filter(u => u.role === 'PROFESSOR').map(u => (
-                        <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
+                    {data.users.filter(u => u.role === 'PROFESSOR').map((u, idx) => (
+                        <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both" style={{ animationDelay: `${idx * 50}ms` }}>
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-lg">
                                     {u.name[0]}

@@ -1,17 +1,79 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
-import { BookOpen, Type } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
+import { BookOpen, Type, User as UserIcon, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Settings: React.FC = () => {
+    const { fontSize, setFontSize } = useSettings();
+    const { user, updateCurrentUser } = useAuth();
+    const { updateUser } = useData();
+
+    const [name, setName] = useState(user?.name || '');
+    const [successMessage, setSuccessMessage] = useState('');
+
+    const handleUpdateProfile = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (name.trim() && user) {
+            const updatedName = name.trim();
+            updateUser(user.id, { name: updatedName });
+            updateCurrentUser({ name: updatedName });
+            setSuccessMessage('Nombre actualizado correctamente');
+            setTimeout(() => setSuccessMessage(''), 3000);
+        }
+    };
     const { fontSize, setFontSize } = useSettings();
 
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
             <h1 className="text-2xl font-bold text-slate-900">Ajustes</h1>
 
+            {/* Profile Section (Only for Director) */}
+            {user?.role === 'DIRECTOR' && (
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8 animate-in fade-in duration-200">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                            <UserIcon className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900">Perfil</h2>
+                            <p className="text-slate-500">Actualiza tus datos personales.</p>
+                        </div>
+                    </div>
+
+                    <form onSubmit={handleUpdateProfile} className="max-w-md space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                                placeholder="Tu nombre"
+                                required
+                            />
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <button
+                                type="submit"
+                                className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
+                            >
+                                Guardar Cambios
+                            </button>
+                            {successMessage && (
+                                <span className="text-green-600 text-sm font-medium flex items-center gap-1 animate-in slide-in-from-left duration-200">
+                                    <Check className="w-4 h-4" />
+                                    {successMessage}
+                                </span>
+                            )}
+                        </div>
+                    </form>
+                </div>
+            )}
+
             {/* Font Size Section */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 transition-all duration-200 ease-in-out">
                 <div className="flex items-center gap-4 mb-6">
                     <div className="p-3 bg-primary-50 text-primary-600 rounded-xl">
                         <Type className="w-6 h-6" />

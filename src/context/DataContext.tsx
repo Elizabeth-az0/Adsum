@@ -1,166 +1,246 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { AppData, ClassGroup, Student, AttendanceRecord, User } from '../types';
-import { api } from '../services/api';
 import { useAuth } from './AuthContext';
 
 interface DataContextType {
     data: AppData;
     isLoading: boolean;
     error: string | null;
-    loadData: () => Promise<void>;
-    addClass: (newClass: Omit<ClassGroup, 'id'>, user: User | null) => Promise<void>;
-    deleteClass: (classId: string, user: User | null) => Promise<void>;
-    addStudentToClass: (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => Promise<void>;
-    removeStudentFromClass: (classId: string, studentId: string, user: User | null) => Promise<void>;
-    saveAttendance: (record: AttendanceRecord, user?: User | null) => Promise<void>;
-    deleteAttendance: (classId: string, date: string, user?: User | null) => Promise<void>;
+    saveData: (newData: AppData) => void;
+    resetData: () => void;
+    addClass: (newClass: Omit<ClassGroup, 'id' | 'studentIds'>, user: User | null) => void;
+    deleteClass: (classId: string, user: User | null) => void;
+    updateClass: (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => void;
+    addStudentToClass: (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => void;
+    removeStudentFromClass: (classId: string, studentId: string, user: User | null) => void;
+    updateUser: (id: string, updatedUser: Partial<User>) => void;
+    saveAttendance: (record: AttendanceRecord, user?: User | null) => void;
+    deleteAttendance: (classId: string, date: string, user?: User | null) => void;
     getClassStats: (classId: string) => { present: number; absent: number; justified: number; total: number };
-    updateUser: (id: string, updatedUser: Partial<User>) => Promise<void>;
-    updateClass: (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => Promise<void>;
-    loadAttendanceForClassAndDate: (classId: string, date: string) => Promise<any>;
 }
+
+const defaultData: AppData = {
+    users: [
+        {
+            id: 'director-1',
+            username: 'director',
+            name: 'Director',
+            password: 'admin',
+            role: 'DIRECTOR',
+            avatar: 'https://ui-avatars.com/api/?name=Director&background=random'
+        }
+    ],
+    classes: [],
+    students: {},
+    attendance: []
+};
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+const calculateAttendanceStats = (studentId: string, attendance: AttendanceRecord[]) => {
+    let present = 0;
+    let absent = 0;
+    let justified = 0;
+    let total = 0;
+
+    attendance.forEach(record => {
+        const studentRecord = record.records.find(r => r.studentId === studentId);
+        if (studentRecord) {
+            total++;
+            if (studentRecord.status === 'PRESENT') present++;
+            if (studentRecord.status === 'ABSENT') absent++;
+            if (studentRecord.status === 'JUSTIFIED') justified++;
+        }
+    });
+
+    return { present, absent, justified, total };
+};
+
+const isAtRisk = (stats: { present: number; total: number }) => {
+    if (stats.total === 0) return false;
+    const rate = stats.present / stats.total;
+    return rate < 0.75;
+};
+
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { user, isAuthenticated, logout } = useAuth();
-    const [data, setData] = useState<AppData>({ users: [], classes: [], students: {}, attendance: [] });
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const { logout } = useAuth();
+    const [data, setDataState] = useState<AppData>(defaultData);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const checkAuthError = (err: any) => {
-        if (err.message === 'UNAUTHORIZED') {
-            logout();
-        }
-        throw err;
-    };
-
-    const loadData = useCallback(async () => {
-        if (!isAuthenticated) return;
-        setIsLoading(true);
-        setError(null);
-        try {
-            const classesRaw = await api.getClasses().catch(checkAuthError);
-            let usersRaw: User[] = [];
-
-            if (user?.role === 'DIRECTOR') {
-                usersRaw = await api.getUsers().catch(checkAuthError);
-            }
-
-            const studentsMap: Record<string, Student> = {};
-            const mappedClasses: ClassGroup[] = [];
-
-            for (const cls of classesRaw) {
-                const studentsRaw = await api.getStudents(cls.id).catch(checkAuthError);
-                mappedClasses.push({
-                    id: cls.id,
-                    name: cls.name,
-                    grado: cls.grade,
-                    seccion: '', // Original backend merging
-                    professorId: cls.professor_id,
-                    studentIds: studentsRaw.map((s: any) => s.id)
-                });
-                for (const st of studentsRaw) {
-                    studentsMap[st.id] = {
-                        id: st.id,
-                        firstName: st.name.split(' ')[0],
-                        lastName: st.name.split(' ').slice(1).join(' '),
-                        risk: false,
-                        attendanceHistory: { present: 0, absent: 0, justified: 0, total: 0 },
-                        avatar: ''
-                    };
-                }
-            }
-
-            setData({
-                users: usersRaw,
-                classes: mappedClasses,
-                students: studentsMap,
-                attendance: [] // We fetch attendance dynamically per class
-            });
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [isAuthenticated, user?.role, logout]);
+    const saveData = useCallback((newData: AppData) => {
+        setDataState(newData);
+        localStorage.setItem('adsum_data', JSON.stringify(newData));
+    }, []);
 
     useEffect(() => {
-        if (isAuthenticated) {
-            loadData();
+        const stored = localStorage.getItem('adsum_data');
+        if (stored) {
+            try {
+                setDataState(JSON.parse(stored));
+            } catch (e) {
+                console.error('Error parsing stored data', e);
+            }
         }
-    }, [isAuthenticated, loadData]);
+        setIsLoading(false);
+    }, []);
 
-    const addClass = async (newClass: Omit<ClassGroup, 'id'>, user: User | null) => {
-        await api.createClass({
-            name: newClass.name,
-            grade: newClass.grado,
-            professor_id: newClass.professorId
-        }).catch(checkAuthError);
-        await loadData();
-    };
+    const resetData = useCallback(() => {
+        localStorage.removeItem('adsum_data');
+        setDataState(defaultData);
+        logout();
+    }, [logout]);
 
-    const deleteClass = async (classId: string, user: User | null) => {
-        await api.deleteClass(classId).catch(checkAuthError);
-        await loadData();
-    };
+    const addClass = useCallback((newClass: Omit<ClassGroup, 'id' | 'studentIds'>) => {
+        setDataState((prev: AppData) => {
+            const cls = { ...newClass, id: Math.random().toString(36).substr(2, 9), studentIds: [] };
+            const next = { ...prev, classes: [...prev.classes, cls] };
+            localStorage.setItem('adsum_data', JSON.stringify(next));
+            return next;
+        });
+    }, []);
 
-    const addStudentToClass = async (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => {
-        await api.createStudent({
-            class_id: classId,
-            name: `${student.firstName} ${student.lastName}`
-        }).catch(checkAuthError);
-        await loadData();
-    };
+    const deleteClass = useCallback((classId: string) => {
+        setDataState((prev: AppData) => {
+            const next = { ...prev, classes: prev.classes.filter(c => c.id !== classId) };
+            localStorage.setItem('adsum_data', JSON.stringify(next));
+            return next;
+        });
+    }, []);
 
-    const removeStudentFromClass = async (classId: string, studentId: string, user: User | null) => {
-        await api.deleteStudent(studentId).catch(checkAuthError);
-        await loadData();
-    };
+    const updateClass = useCallback((id: string, updatedClass: Partial<ClassGroup>) => {
+        setDataState((prev: AppData) => {
+            const next = {
+                ...prev,
+                classes: prev.classes.map(c => c.id === id ? { ...c, ...updatedClass } : c)
+            };
+            localStorage.setItem('adsum_data', JSON.stringify(next));
+            return next;
+        });
+    }, []);
 
-    const updateUser = async (id: string, updatedUser: Partial<User>) => {
-        await api.updateUser(id, updatedUser).catch(checkAuthError);
-        await loadData();
-    };
+    const addStudentToClass = useCallback((classId: string, studentProps: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>) => {
+        setDataState((prev: AppData) => {
+            const studentId = Math.random().toString(36).substr(2, 9);
+            const newStudent: Student = {
+                ...studentProps,
+                id: studentId,
+                attendanceHistory: { present: 0, absent: 0, justified: 0, total: 0 },
+                risk: false
+            };
 
-    const updateClass = async (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => {
-        await api.updateClass(id, {
-            name: updatedClass.name,
-            grade: updatedClass.grado,
-            professor_id: updatedClass.professorId
-        }).catch(checkAuthError);
-        await loadData();
-    };
+            const next = {
+                ...prev,
+                students: { ...prev.students, [studentId]: newStudent },
+                classes: prev.classes.map(c => c.id === classId ? { ...c, studentIds: [...c.studentIds, studentId] } : c)
+            };
+            localStorage.setItem('adsum_data', JSON.stringify(next));
+            return next;
+        });
+    }, []);
 
-    const loadAttendanceForClassAndDate = async (classId: string, date: string) => {
-        const records = await api.getAttendance(classId, date).catch(checkAuthError);
-        return records;
-    };
+    const removeStudentFromClass = useCallback((classId: string, studentId: string) => {
+        setDataState((prev: AppData) => {
+            const nextStudents = { ...prev.students };
+            delete nextStudents[studentId];
 
-    const saveAttendance = async (record: AttendanceRecord, user?: User | null) => {
-        await api.saveAttendance({
-            class_id: record.classId,
-            date: record.date,
-            records: record.records.map(r => ({
-                student_id: r.studentId,
-                status: r.status
-            }))
-        }).catch(checkAuthError);
-    };
+            const next = {
+                ...prev,
+                students: nextStudents,
+                classes: prev.classes.map(c => c.id === classId ? { ...c, studentIds: c.studentIds.filter(id => id !== studentId) } : c)
+            };
+            localStorage.setItem('adsum_data', JSON.stringify(next));
+            return next;
+        });
+    }, []);
 
-    const deleteAttendance = async (classId: string, date: string, user?: User | null) => {
-        await api.deleteAttendance(classId, date).catch(checkAuthError);
-    };
+    const updateUser = useCallback((id: string, updatedUser: Partial<User>) => {
+        setDataState((prev: AppData) => {
+            const next = {
+                ...prev,
+                users: prev.users.map(u => u.id === id ? { ...u, ...updatedUser } : u)
+            };
+            localStorage.setItem('adsum_data', JSON.stringify(next));
+            return next;
+        });
+    }, []);
 
-    const getClassStats = (classId: string) => {
-        return { present: 0, absent: 0, justified: 0, total: 0 };
-    };
+    const saveAttendance = useCallback((record: AttendanceRecord) => {
+        setDataState((prev: AppData) => {
+            const filteredAttendance = prev.attendance.filter(a => !(a.classId === record.classId && a.date === record.date));
+            const newAttendance = [...filteredAttendance, record];
+
+            const nextStudents = { ...prev.students };
+            const classObj = prev.classes.find(c => c.id === record.classId);
+            if (classObj) {
+                classObj.studentIds.forEach(studentId => {
+                    const stats = calculateAttendanceStats(studentId, newAttendance);
+                    const risk = isAtRisk(stats);
+                    if (nextStudents[studentId]) {
+                        nextStudents[studentId] = {
+                            ...nextStudents[studentId],
+                            attendanceHistory: stats,
+                            risk
+                        };
+                    }
+                });
+            }
+
+            const next = { ...prev, attendance: newAttendance, students: nextStudents };
+            localStorage.setItem('adsum_data', JSON.stringify(next));
+            return next;
+        });
+    }, []);
+
+    const deleteAttendance = useCallback((classId: string, date: string) => {
+        setDataState((prev: AppData) => {
+            const newAttendance = prev.attendance.filter(a => !(a.classId === classId && a.date === date));
+
+            const nextStudents = { ...prev.students };
+            const classObj = prev.classes.find(c => c.id === classId);
+            if (classObj) {
+                classObj.studentIds.forEach(studentId => {
+                    const stats = calculateAttendanceStats(studentId, newAttendance);
+                    const risk = isAtRisk(stats);
+                    if (nextStudents[studentId]) {
+                        nextStudents[studentId] = {
+                            ...nextStudents[studentId],
+                            attendanceHistory: stats,
+                            risk
+                        };
+                    }
+                });
+            }
+
+            const next = { ...prev, attendance: newAttendance, students: nextStudents };
+            localStorage.setItem('adsum_data', JSON.stringify(next));
+            return next;
+        });
+    }, []);
+
+    const getClassStats = useCallback((classId: string) => {
+        let present = 0;
+        let absent = 0;
+        let justified = 0;
+        let total = 0;
+
+        data.attendance.filter(a => a.classId === classId).forEach(record => {
+            record.records.forEach(r => {
+                total++;
+                if (r.status === 'PRESENT') present++;
+                if (r.status === 'ABSENT') absent++;
+                if (r.status === 'JUSTIFIED') justified++;
+            });
+        });
+
+        return { present, absent, justified, total };
+    }, [data.attendance]);
 
     return (
         <DataContext.Provider value={{
-            data, isLoading, error, loadData, addClass, deleteClass, addStudentToClass,
-            removeStudentFromClass, saveAttendance, deleteAttendance, getClassStats,
-            updateUser, updateClass, loadAttendanceForClassAndDate
+            data, isLoading, error: null,
+            saveData, resetData, addClass, deleteClass, updateClass,
+            addStudentToClass, removeStudentFromClass, updateUser,
+            saveAttendance, deleteAttendance, getClassStats
         }}>
             {children}
         </DataContext.Provider>

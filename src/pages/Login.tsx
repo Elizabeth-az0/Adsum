@@ -16,15 +16,18 @@ const Login: React.FC = () => {
         setIsLoading(true);
         setError('');
 
-        // Simulate network delay for effect
-        setTimeout(() => {
-            if (login(username, password)) {
+        try {
+            const success = await login({ username, password });
+            if (success) {
                 navigate('/');
             } else {
                 setError('Credenciales inválidas');
-                setIsLoading(false);
             }
-        }, 800);
+        } catch (err) {
+            setError('Error de conexión o credenciales inválidas');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (

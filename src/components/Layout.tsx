@@ -59,9 +59,9 @@ const Layout: React.FC = () => {
                 isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 <div className="p-6 border-b border-slate-100">
-                    <div className="flex items-center gap-3">
-                        <img src="/LogoAdsum1.svg" alt="Adsum Logo" className="h-10 w-auto" />
-                        <span className="text-xl font-bold text-slate-900">Adsum</span>
+                    <div className="flex items-center justify-center gap-1 -ml-4">
+                        <img src="/LogoAdsum1.svg" alt="Adsum Logo" className="h-11 w-auto translate-x-2" />
+                        <span className="text-2xl font-bold text-slate-900 tracking-tight">Adsum</span>
                     </div>
                 </div>
 
@@ -119,9 +119,9 @@ const Layout: React.FC = () => {
             <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
                 {/* Mobile Header */}
                 <header className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-30">
-                    <div className="flex items-center gap-3">
-                        <img src="/LogoAdsum1.svg" alt="Adsum Logo" className="h-8 w-auto" />
-                        <span className="font-bold text-slate-900">Adsum</span>
+                    <div className="flex items-center gap-1">
+                        <img src="/LogoAdsum1.svg" alt="Adsum Logo" className="h-9 w-auto translate-x-1" />
+                        <span className="font-bold text-slate-900 tracking-tight text-lg">Adsum</span>
                     </div>
                     <button
                         onClick={() => setIsMobileMenuOpen(true)}

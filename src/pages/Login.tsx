@@ -38,9 +38,9 @@ const Login: React.FC = () => {
         <div className="min-h-screen flex items-center justify-center bg-primary-600 p-4">
             <div className="bg-white border border-slate-100 p-8 rounded-2xl w-full max-w-md text-slate-900">
                 <div className="flex flex-col items-center mb-8">
-                    <img src="/LogoAdsum1.svg" alt="Adsum Logo" className="h-20 w-auto mb-4" />
-                    <h1 className="text-3xl font-bold">Adsum</h1>
-                    <p className="text-slate-500 mt-2">Gestión escolar inteligente</p>
+                    <img src="/LogoAdsum1.svg" alt="Adsum Logo" className="h-24 w-auto mb-4 xl:-ml-4 translate-x-4 drop-shadow-sm" />
+                    <h1 className="text-3xl font-bold text-slate-900 text-center">Adsum</h1>
+                    <p className="text-slate-500 mt-2 text-center">Gestión escolar inteligente</p>
                 </div>
 
                 {error && (

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { School, User, Lock, ArrowRight } from 'lucide-react';
+import { User, Lock, ArrowRight } from 'lucide-react';
 
 const Login: React.FC = () => {
     const [username, setUsername] = useState('');
@@ -38,9 +38,7 @@ const Login: React.FC = () => {
         <div className="min-h-screen flex items-center justify-center bg-primary-600 p-4">
             <div className="bg-white border border-slate-100 p-8 rounded-2xl w-full max-w-md text-slate-900">
                 <div className="flex flex-col items-center mb-8">
-                    <div className="bg-primary-50 p-4 rounded-full mb-4">
-                        <School className="w-12 h-12 text-primary-600" />
-                    </div>
+                    <img src="/LogoAdsum1.svg" alt="Adsum Logo" className="h-20 w-auto mb-4" />
                     <h1 className="text-3xl font-bold">Adsum</h1>
                     <p className="text-slate-500 mt-2">Gestión escolar inteligente</p>
                 </div>

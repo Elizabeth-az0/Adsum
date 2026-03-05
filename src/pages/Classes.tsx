@@ -15,7 +15,15 @@ const Classes: React.FC = () => {
         user?.role === 'DIRECTOR' || c.professorId === user?.id
     );
 
-    const [selectedClassId, setSelectedClassId] = useState<string>(myClasses[0]?.id || '');
+    const [selectedClassId, setSelectedClassId] = useState<string>('');
+
+    React.useEffect(() => {
+        if (!selectedClassId && myClasses.length > 0) {
+            setSelectedClassId(myClasses[0].id);
+        } else if (selectedClassId && myClasses.length > 0 && !myClasses.find(c => c.id === selectedClassId)) {
+            setSelectedClassId(myClasses[0].id);
+        }
+    }, [myClasses, selectedClassId]);
     const [newStudentName, setNewStudentName] = useState('');
     const [newStudentLastName, setNewStudentLastName] = useState('');
     const [searchTerm, setSearchTerm] = useState('');

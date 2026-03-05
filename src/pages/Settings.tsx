@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { BookOpen, Type, User as UserIcon, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ExportReportsPanel from '../components/reports/ExportReportsPanel';
 
 const Settings: React.FC = () => {
     const { fontSize, setFontSize } = useSettings();
@@ -71,6 +72,9 @@ const Settings: React.FC = () => {
                     </form>
                 </div>
             )}
+
+            {/* Exportación de Reportes */}
+            <ExportReportsPanel />
 
             {/* para ver más grande la letra */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 transition-all duration-200 ease-in-out">

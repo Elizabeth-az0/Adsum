@@ -371,4 +371,83 @@ app.get('/api/reports', async (c) => {
     })
 })
 
+// ----- ATTENDANCE REPORTS -----
+app.get('/api/reports/attendance', async (c) => {
+    const user = c.get('user')
+    const classId = c.req.query('classId')
+    const month = c.req.query('month') // "01" - "12"
+    const year = c.req.query('year') // "2024"
+    const reportType = c.req.query('reportType')
+
+    if (!classId || !month || !year) {
+        return c.json({ error: 'Faltan parámetros: classId, month, year' }, 400)
+    }
+
+    // RBAC: PROFESSOR solo puede exportar sus propias aulas
+    if (user.role === 'PROFESSOR') {
+        const cls = await c.env.DB.prepare('SELECT professor_id FROM classes WHERE id = ?').bind(classId).first()
+        if (!cls || cls.professor_id !== user.id) return c.json({ error: 'Prohibido: No tienes acceso a esta aula' }, 403)
+    }
+
+    // 1. Obtener información básica del aula
+    const classInfo = await c.env.DB.prepare('SELECT * FROM classes WHERE id = ?').bind(classId).first()
+    if (!classInfo) return c.json({ error: 'Aula no encontrada' }, 404)
+
+    // 2. Obtener estudiantes del aula
+    const { results: students } = await c.env.DB.prepare('SELECT id, name FROM students WHERE class_id = ? ORDER BY name ASC').bind(classId).all()
+
+    // 3. Obtener asistencias del periodo
+    const datePattern = `${year}-${month}-%`
+    const { results: attendance } = await c.env.DB.prepare(`
+        SELECT student_id, date, status 
+        FROM attendance 
+        WHERE class_id = ? AND date LIKE ?
+        ORDER BY date ASC
+    `).bind(classId, datePattern).all()
+
+    // 4. Calcular estadísticas por estudiante
+    const statsByStudent = students.map(s => {
+        const studentAttendance = attendance.filter((a: any) => a.student_id === s.id)
+        const present = studentAttendance.filter((a: any) => a.status === 'PRESENT').length
+        const absent = studentAttendance.filter((a: any) => a.status === 'ABSENT').length
+        const justified = studentAttendance.filter((a: any) => a.status === 'JUSTIFIED').length
+        const total = studentAttendance.length
+        const percent = total > 0 ? (present / total) * 100 : 0
+
+        return {
+            studentId: s.id,
+            studentName: s.name,
+            present,
+            absent,
+            justified,
+            total,
+            percent: Math.round(percent)
+        }
+    })
+
+    // 5. Estadísticas globales del aula
+    const totalStudents = students.length
+    const avgAttendance = statsByStudent.length > 0
+        ? statsByStudent.reduce((acc, curr) => acc + curr.percent, 0) / statsByStudent.length
+        : 0
+    const atRiskStudents = statsByStudent.filter(s => s.absent >= 10).length
+
+    return c.json({
+        classInfo: {
+            id: classInfo.id,
+            name: classInfo.name,
+            grade: classInfo.grade
+        },
+        period: { month, year },
+        reportType,
+        students: statsByStudent,
+        detailedAttendance: attendance,
+        summary: {
+            totalStudents,
+            avgAttendance: Math.round(avgAttendance),
+            atRiskStudents
+        }
+    })
+})
+
 export default app

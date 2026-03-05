@@ -154,5 +154,14 @@ export const api = {
         const res = await fetch(`${API_URL}/reports?from=${from}&to=${to}`, { headers: getHeaders(), signal });
         await checkError(res, 'Error al cargar reportes');
         return res.json();
+    },
+
+    getAttendanceReport: async (classId: string, month: string, year: string, reportType: string, signal?: AbortSignal) => {
+        const res = await fetch(`${API_URL}/reports/attendance?classId=${classId}&month=${month}&year=${year}&reportType=${reportType}`, {
+            headers: getHeaders(),
+            signal
+        });
+        await checkError(res, 'Error al obtener reporte de asistencia');
+        return res.json();
     }
 };

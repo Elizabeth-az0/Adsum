@@ -33,10 +33,11 @@ interface ReportData {
 interface ReportPreviewProps {
     data: ReportData | null;
     reportType: string;
+    exportFormat: string;
     isLoading: boolean;
 }
 
-const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, isLoading }) => {
+const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, exportFormat, isLoading }) => {
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center p-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
@@ -72,9 +73,67 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, isLoadi
     // Generate days for calendar view (only days with records)
     const activeDays = Array.from(new Set(detailedAttendance.map((a) => getDay(a.date)))).sort((a, b) => a - b);
 
+    if (exportFormat === 'excel') {
+        return (
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-inner border-2 border-slate-200 dark:border-slate-800 p-8 overflow-hidden font-mono text-xs">
+                <div className="mb-4 flex items-center gap-4 text-slate-500 uppercase font-bold tracking-tighter">
+                    <div className="bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 rounded text-emerald-700">EXCEL PREVIEW</div>
+                    <span>{classInfo.name}</span>
+                    <span>{new Date(`${period.year}-${period.month}-01T12:00:00`).toLocaleString('es-ES', { month: 'short', year: 'numeric' })}</span>
+                </div>
+                {/* Excel Header Mockup */}
+                <div className="grid grid-cols-4 gap-[1px] bg-slate-200 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 mb-6">
+                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-slate-400">Total Alumnos</div>
+                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-emerald-600">{students.length}</div>
+                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-slate-400">Presentes</div>
+                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-emerald-600">{totalPresent}</div>
+                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-slate-400">Ausentes</div>
+                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-rose-600">{totalAbsent}</div>
+                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-slate-400">Justificados</div>
+                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-amber-600">{totalJustified}</div>
+                </div>
+
+                <div className="overflow-x-auto border-t border-l border-slate-200 dark:border-slate-700">
+                    {reportType === 'summary' && (
+                        <table className="min-w-full border-r border-b border-slate-200 dark:border-slate-700">
+                            <thead>
+                                <tr className="bg-slate-100 dark:bg-slate-800">
+                                    <th className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-left font-black">Estudiante</th>
+                                    <th className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-center font-black">Presentes</th>
+                                    <th className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-center font-black">Ausentes</th>
+                                    <th className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-center font-black">Justificados</th>
+                                    <th className="border-b border-slate-200 dark:border-slate-700 p-2 text-right font-black">% Asistencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {students.map((s) => (
+                                    <tr key={s.studentId}>
+                                        <td className="border-r border-b border-slate-200 dark:border-slate-700 p-2 font-medium">{s.studentName}</td>
+                                        <td className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-center">{s.present}</td>
+                                        <td className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-center">{s.absent}</td>
+                                        <td className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-center">{s.justified}</td>
+                                        <td className="border-b border-slate-200 dark:border-slate-700 p-2 text-right">{s.percent}%</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                    {/* (Other excel-style report types for history/calendar would go here if needed, 
+                        but focusing on summary for now as requested) */}
+                    {reportType !== 'summary' && (
+                        <div className="p-4 text-center text-slate-400 font-bold italic">
+                            Previsualización de Excel disponible para Resumen.
+                            El archivo descargado contendrá todos los datos.
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-800 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Report Header */}
+            {/* Report Header (PDF Version) */}
             <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white">
                 <div className="flex justify-between items-start">
                     <div>

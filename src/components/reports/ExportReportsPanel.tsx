@@ -3,15 +3,9 @@ import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import ReportPreview from './ReportPreview';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-
-declare module 'jspdf' {
-    interface jsPDF {
-        autoTable: (options: any) => jsPDF;
-    }
-}
 
 interface ReportData {
     classInfo: {
@@ -91,9 +85,13 @@ const ExportReportsPanel: React.FC = () => {
         fetchReportData();
     }, [fetchReportData]);
 
-    const handleExport = () => {
+    const handleExport = (e: React.MouseEvent) => {
+        e.preventDefault();
         if (!reportData) return;
+
         setIsLoading(true);
+        console.log('Iniciando exportación en formato:', exportFormat);
+
         try {
             if (exportFormat === 'pdf') {
                 exportToPDF();
@@ -101,7 +99,7 @@ const ExportReportsPanel: React.FC = () => {
                 exportToExcel();
             }
         } catch (err: any) {
-            console.error('Export error:', err);
+            console.error('Error crítico al exportar:', err);
             setFetchError(`Error al exportar: ${err.message}`);
         } finally {
             setIsLoading(false);
@@ -145,7 +143,7 @@ const ExportReportsPanel: React.FC = () => {
                 `${s.percent}%`
             ]);
 
-            doc.autoTable({
+            autoTable(doc, {
                 startY: 60,
                 head: [['Estudiante', 'Presentes', 'Ausentes', 'Justificados', '% Asistencia']],
                 body: tableData,
@@ -160,7 +158,7 @@ const ExportReportsPanel: React.FC = () => {
                 a.status === 'PRESENT' ? 'Presente' : a.status === 'ABSENT' ? 'Ausente' : 'Justificado'
             ]);
 
-            doc.autoTable({
+            autoTable(doc, {
                 startY: 60,
                 head: [['Fecha', 'Estudiante', 'Estado']],
                 body: tableData,
@@ -181,7 +179,7 @@ const ExportReportsPanel: React.FC = () => {
                 return row;
             });
 
-            doc.autoTable({
+            autoTable(doc, {
                 startY: 60,
                 head: head,
                 body: body,
@@ -369,7 +367,7 @@ const ExportReportsPanel: React.FC = () => {
                     <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">Vista Previa</h3>
                     {isLoading && <span className="text-indigo-600 dark:text-indigo-400 font-bold animate-pulse">Sincronizando...</span>}
                 </div>
-                <ReportPreview data={reportData} reportType={reportType} isLoading={isLoading} />
+                <ReportPreview data={reportData} reportType={reportType} exportFormat={exportFormat} isLoading={isLoading} />
             </div>
         </div>
     );

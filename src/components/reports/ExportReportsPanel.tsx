@@ -54,6 +54,7 @@ const ExportReportsPanel: React.FC = () => {
     const [exportFormat, setExportFormat] = useState('pdf');
     const [reportData, setReportData] = useState<ReportData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     // Filter classes based on role
     const availableClasses = data.classes.filter(c =>
@@ -63,15 +64,24 @@ const ExportReportsPanel: React.FC = () => {
     const fetchReportData = useCallback(async () => {
         if (!selectedClassId) {
             setReportData(null);
+            setFetchError(null);
             return;
         }
 
         setIsLoading(true);
+        setFetchError(null);
         try {
             const res = await api.getAttendanceReport(selectedClassId, month, year, reportType);
-            setReportData(res);
-        } catch (error) {
+            if (res.students && res.students.length === 0) {
+                setFetchError('No se encontraron estudiantes en esta aula.');
+                setReportData(null);
+            } else {
+                setReportData(res);
+            }
+        } catch (error: any) {
             console.error('Error fetching report data:', error);
+            setFetchError(error.message || 'Error al conectar con el servidor');
+            setReportData(null);
         } finally {
             setIsLoading(false);
         }
@@ -234,7 +244,7 @@ const ExportReportsPanel: React.FC = () => {
                             <select
                                 value={selectedClassId}
                                 onChange={(e) => setSelectedClassId(e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none appearance-none"
+                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none"
                             >
                                 <option value="">Seleccionar aula</option>
                                 {availableClasses.map(c => (
@@ -249,7 +259,7 @@ const ExportReportsPanel: React.FC = () => {
                             <select
                                 value={month}
                                 onChange={(e) => setMonth(e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none appearance-none"
+                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none"
                             >
                                 {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
                                     <option key={m} value={m}>
@@ -265,7 +275,7 @@ const ExportReportsPanel: React.FC = () => {
                             <select
                                 value={year}
                                 onChange={(e) => setYear(e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none appearance-none"
+                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none"
                             >
                                 <option value="2024">2024</option>
                                 <option value="2025">2025</option>
@@ -279,7 +289,7 @@ const ExportReportsPanel: React.FC = () => {
                             <select
                                 value={reportType}
                                 onChange={(e) => setReportType(e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none appearance-none"
+                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none"
                             >
                                 <option value="summary">Resumen mensual</option>
                                 <option value="history">Historial detallado</option>
@@ -287,6 +297,15 @@ const ExportReportsPanel: React.FC = () => {
                             </select>
                         </div>
                     </div>
+
+                    {fetchError && (
+                        <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-100 dark:border-rose-900/40 rounded-xl flex items-center gap-3 text-rose-600 dark:text-rose-400 animate-in shake duration-300">
+                            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="font-bold">{fetchError}</span>
+                        </div>
+                    )}
 
                     <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border-2 border-indigo-100 dark:border-indigo-900/40">
                         <div className="flex-1 space-y-2 text-center md:text-left">

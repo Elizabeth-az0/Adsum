@@ -118,73 +118,72 @@ const ExportReportsPanel: React.FC = () => {
         const totalJustified = students.reduce((acc, s) => acc + s.justified, 0);
 
         // Header Background
-        doc.setFillColor(99, 102, 241); // indigo-500
-        doc.rect(0, 0, 210, 65, 'F');
+        doc.setFillColor(66, 18, 132); // #421284
+        doc.roundedRect(14, 15, 182, 45, 3, 3, 'F');
 
-        doc.setFontSize(22);
+        doc.setFontSize(20);
         doc.setTextColor(255, 255, 255);
         doc.setFont("helvetica", "bold");
-        doc.text("Reporte de Asistencia", 14, 22);
+        doc.text("Reporte de Asistencia", 20, 26);
 
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
         const TitleType = reportType === 'summary' ? `Resumen Mensual` :
             reportType === 'history' ? `Historial Detallado` : `Calendario de Asistencia`;
-
-        doc.setFontSize(12);
-        doc.setTextColor(224, 231, 255); // indigo-100
-        doc.setFont("helvetica", "normal");
-        doc.text(`${TitleType} • ${classInfo.name} (${classInfo.grade.replace('|', ' ')})`, 14, 30);
+        doc.text(`${TitleType} • ${classInfo.name} (${classInfo.grade.replace('|', ' ')})`, 20, 32);
 
         // Right side Period text
-        const periodStr = `Periodo: ${monthName} ${period.year}`;
-        doc.setFontSize(12);
+        const periodLabel = "PERIODO";
+        doc.setFontSize(8);
+        doc.text(periodLabel, 190, 24, { align: "right" });
+        doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(255, 255, 255);
-        doc.text(periodStr, 210 - 14 - doc.getTextWidth(periodStr), 22);
+        const periodStrStr = `${monthName} de ${period.year}`;
+        doc.text(periodStrStr, 190, 30, { align: "right" });
 
         // Draw Stats Cards
-        // Card 1
-        doc.setFillColor(255, 255, 255);
-        doc.setDrawColor(255, 255, 255);
-        doc.rect(14, 40, 42, 16, 'DF'); // x, y, w, h
-        doc.setTextColor(79, 70, 229);
-        doc.setFontSize(8);
-        doc.text("TOTAL ALUMNOS", 16, 46);
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(`${students.length}`, 16, 53);
-
-        // Card 2
-        doc.setFillColor(16, 185, 129); // emerald-500
-        doc.rect(60, 40, 42, 16, 'F');
+        // Card 1: bg-white/10
+        doc.setFillColor(85, 41, 142); // Approximate blend
+        doc.setDrawColor(100, 50, 160);
+        doc.roundedRect(20, 39, 38, 14, 2, 2, 'DF');
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-        doc.text("PRESENTES", 62, 46);
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(`${totalPresent}`, 62, 53);
+        doc.setFontSize(7);
+        doc.text("TOTAL ALUMNOS", 22, 44);
+        doc.setFontSize(12);
+        doc.text(`${students.length}`, 22, 50);
 
-        // Card 3
-        doc.setFillColor(244, 63, 94); // rose-500
-        doc.rect(106, 40, 42, 16, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(8);
+        // Card 2: Emerald/20
+        doc.setFillColor(56, 51, 131);
+        doc.setDrawColor(50, 80, 150);
+        doc.roundedRect(62, 39, 38, 14, 2, 2, 'DF');
+        doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
-        doc.text("AUSENTES", 108, 46);
-        doc.setFontSize(14);
+        doc.text("PRESENTES", 64, 44);
+        doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
-        doc.text(`${totalAbsent}`, 108, 53);
+        doc.text(`${totalPresent}`, 64, 50);
 
-        // Card 4
-        doc.setFillColor(245, 158, 11); // amber-500
-        doc.rect(152, 40, 42, 16, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(8);
+        // Card 3: Rose/20
+        doc.setFillColor(101, 27, 124);
+        doc.setDrawColor(130, 40, 130);
+        doc.roundedRect(104, 39, 38, 14, 2, 2, 'DF');
+        doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
-        doc.text("JUSTIFICADOS", 154, 46);
-        doc.setFontSize(14);
+        doc.text("AUSENTES", 106, 44);
+        doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
-        doc.text(`${totalJustified}`, 154, 53);
+        doc.text(`${totalAbsent}`, 106, 50);
+
+        // Card 4: Amber/20
+        doc.setFillColor(101, 46, 108);
+        doc.setDrawColor(130, 60, 110);
+        doc.roundedRect(146, 39, 38, 14, 2, 2, 'DF');
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text("JUSTIFICADOS", 148, 44);
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${totalJustified}`, 148, 50);
 
 
         if (reportType === 'summary') {
@@ -197,12 +196,25 @@ const ExportReportsPanel: React.FC = () => {
             ]);
 
             autoTable(doc, {
-                startY: 75,
-                head: [['Estudiante', 'Presentes', 'Ausentes', 'Justificados', '% Asistencia']],
+                startY: 65,
+                head: [['ESTUDIANTE', 'PRESENTES', 'AUSENTES', 'JUSTIFICADOS', '% ASISTENCIA']],
                 body: tableData,
                 theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229], textColor: 255 },
-                styles: { fontSize: 9 },
+                headStyles: { fillColor: [249, 250, 251], textColor: [107, 114, 128], fontStyle: 'bold', fontSize: 8 },
+                bodyStyles: { textColor: [17, 24, 39], fontSize: 9 },
+                didParseCell: function (data) {
+                    if (data.section === 'body') {
+                        if (data.column.index === 1) data.cell.styles.textColor = [16, 185, 129];
+                        if (data.column.index === 2) data.cell.styles.textColor = [244, 63, 94];
+                        if (data.column.index === 3) data.cell.styles.textColor = [245, 158, 11];
+                        if (data.column.index === 4) {
+                            const val = parseInt((data.cell.raw as string).replace('%', ''));
+                            if (val >= 90) data.cell.styles.textColor = [16, 185, 129];
+                            else if (val >= 75) data.cell.styles.textColor = [245, 158, 11];
+                            else data.cell.styles.textColor = [244, 63, 94];
+                        }
+                    }
+                }
             });
         } else if (reportType === 'history') {
             const tableData = detailedAttendance.map((a) => [
@@ -212,17 +224,25 @@ const ExportReportsPanel: React.FC = () => {
             ]);
 
             autoTable(doc, {
-                startY: 75,
-                head: [['Fecha', 'Estudiante', 'Estado']],
+                startY: 65,
+                head: [['FECHA', 'ESTUDIANTE', 'ESTADO']],
                 body: tableData,
                 theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229], textColor: 255 },
-                styles: { fontSize: 9 },
+                headStyles: { fillColor: [249, 250, 251], textColor: [107, 114, 128], fontStyle: 'bold', fontSize: 8 },
+                bodyStyles: { textColor: [17, 24, 39], fontSize: 9 },
+                didParseCell: function (data) {
+                    if (data.section === 'body' && data.column.index === 2) {
+                        const val = data.cell.raw as string;
+                        if (val === 'Presente') data.cell.styles.textColor = [16, 185, 129];
+                        else if (val === 'Ausente') data.cell.styles.textColor = [244, 63, 94];
+                        else data.cell.styles.textColor = [245, 158, 11];
+                    }
+                }
             });
         } else if (reportType === 'calendar') {
             const activeDays = Array.from(new Set(detailedAttendance.map((a) => new Date(a.date + 'T12:00:00').getUTCDate()))).sort((a, b) => a - b);
 
-            const head = [['Estudiante', ...activeDays.map(d => d.toString())]];
+            const head = [['ESTUDIANTE', ...activeDays.map(d => `Día ${d}`)]];
             const body = students.map((s) => {
                 const row: (string | number)[] = [s.studentName.split(' ')[0]];
                 activeDays.forEach(day => {
@@ -233,13 +253,21 @@ const ExportReportsPanel: React.FC = () => {
             });
 
             autoTable(doc, {
-                startY: 75,
+                startY: 65,
                 head: head,
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229], textColor: 255, fontSize: 8 },
-                styles: { fontSize: 7, halign: 'center' },
-                columnStyles: { 0: { halign: 'left', minCellWidth: 30 } }
+                headStyles: { fillColor: [249, 250, 251], textColor: [107, 114, 128], fontStyle: 'bold', fontSize: 7 },
+                bodyStyles: { textColor: [17, 24, 39], fontSize: 8, halign: 'center' },
+                columnStyles: { 0: { halign: 'left', minCellWidth: 30 } },
+                didParseCell: function (data) {
+                    if (data.section === 'body' && data.column.index > 0) {
+                        const val = data.cell.raw as string;
+                        if (val === 'P') data.cell.styles.textColor = [16, 185, 129];
+                        else if (val === 'A') data.cell.styles.textColor = [244, 63, 94];
+                        else if (val === 'J') data.cell.styles.textColor = [245, 158, 11];
+                    }
+                }
             });
         }
 

@@ -9,9 +9,9 @@ interface DataContextType {
     error: string | null;
     saveData: (newData: AppData) => void;
     resetData: () => void;
-    addClass: (newClass: Omit<ClassGroup, 'id' | 'studentIds'>, user: User | null) => void;
-    deleteClass: (classId: string, user: User | null) => void;
-    updateClass: (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => void;
+    addClass: (newClass: Omit<ClassGroup, 'id' | 'studentIds'>, user: User | null) => Promise<void>;
+    deleteClass: (classId: string, user: User | null) => Promise<void>;
+    updateClass: (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => Promise<void>;
     addStudentToClass: (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => void;
     removeStudentFromClass: (classId: string, studentId: string, user: User | null) => void;
     updateUser: (id: string, updatedUser: Partial<User>) => void;
@@ -152,40 +152,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [logout]);
 
     const addClass = useCallback(async (newClass: Omit<ClassGroup, 'id' | 'studentIds'>) => {
-        try {
-            const gradeStr = `${newClass.grado}|${newClass.seccion}`;
-            const res = await api.createClass({ name: newClass.name, grade: gradeStr, professor_id: newClass.professorId });
-            setDataState(prev => {
-                const cls = { ...newClass, id: res.id, studentIds: [] };
-                return { ...prev, classes: [...prev.classes, cls] };
-            });
-        } catch (e) { alert('Error: ' + (e as Error).message); }
+        const gradeStr = `${newClass.grado}|${newClass.seccion}`;
+        const res = await api.createClass({ name: newClass.name, grade: gradeStr, professor_id: newClass.professorId });
+        setDataState(prev => {
+            const cls = { ...newClass, id: res.id, studentIds: [] };
+            return { ...prev, classes: [...prev.classes, cls] };
+        });
     }, []);
 
     const deleteClass = useCallback(async (classId: string) => {
-        try {
-            await api.deleteClass(classId);
-            setDataState(prev => ({ ...prev, classes: prev.classes.filter(c => c.id !== classId) }));
-        } catch (e) { alert('Error: ' + (e as Error).message); }
+        await api.deleteClass(classId);
+        setDataState(prev => ({ ...prev, classes: prev.classes.filter(c => c.id !== classId) }));
     }, []);
 
     const updateClass = useCallback(async (id: string, updatedClass: Partial<ClassGroup>) => {
-        try {
-            const dataToUpdate: any = {};
-            if (updatedClass.name) dataToUpdate.name = updatedClass.name;
-            if (updatedClass.grado || updatedClass.seccion) {
-                // armamos el string del grado por si aca
-                const gradeStr = `${updatedClass.grado || ''}|${updatedClass.seccion || 'A'}`;
-                dataToUpdate.grade = gradeStr;
-            }
-            if (updatedClass.professorId) dataToUpdate.professor_id = updatedClass.professorId;
+        const dataToUpdate: any = {};
+        if (updatedClass.name) dataToUpdate.name = updatedClass.name;
+        if (updatedClass.grado || updatedClass.seccion) {
+            // armamos el string del grado por si aca
+            const gradeStr = `${updatedClass.grado || ''}|${updatedClass.seccion || 'A'}`;
+            dataToUpdate.grade = gradeStr;
+        }
+        if (updatedClass.professorId) dataToUpdate.professor_id = updatedClass.professorId;
 
-            await api.updateClass(id, dataToUpdate);
-            setDataState(prev => ({
-                ...prev,
-                classes: prev.classes.map(c => c.id === id ? { ...c, ...updatedClass } : c)
-            }));
-        } catch (e) { alert('Error: ' + (e as Error).message); }
+        await api.updateClass(id, dataToUpdate);
+        setDataState(prev => ({
+            ...prev,
+            classes: prev.classes.map(c => c.id === id ? { ...c, ...updatedClass } : c)
+        }));
     }, []);
 
     const addStudentToClass = useCallback(async (classId: string, studentProps: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>) => {

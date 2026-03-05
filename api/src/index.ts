@@ -17,7 +17,7 @@ const app = new Hono<{ Bindings: Bindings, Variables: { user: UserPayload } }>()
 
 app.onError((err, c) => {
     console.error('Unhandled Server Error:', err.message);
-    return c.json({ error: 'Error interno del servidor' }, 500);
+    return c.json({ error: `Error interno del servidor: ${err.message}` }, 500);
 })
 
 app.notFound((c) => {
@@ -172,7 +172,7 @@ app.post('/api/classes', async (c) => {
     const id = crypto.randomUUID()
 
     await c.env.DB.prepare('INSERT INTO classes (id, name, grade, professor_id) VALUES (?, ?, ?, ?)')
-        .bind(id, name, grade, professor_id).run()
+        .bind(id, name ?? null, grade ?? null, professor_id ?? null).run()
 
     return c.json({ id, name, grade, professor_id }, 201)
 })
@@ -182,10 +182,11 @@ app.put('/api/classes/:id', async (c) => {
     if (user.role !== 'DIRECTOR') return c.json({ error: 'Prohibido' }, 403)
 
     const id = c.req.param('id')
-    const { name, grade, professor_id } = await c.req.json()
+    const params = await c.req.json()
 
-    await c.env.DB.prepare('UPDATE classes SET name = ?, grade = ?, professor_id = ? WHERE id = ?')
-        .bind(name, grade, professor_id, id).run()
+    // allow partial updates via COALESCE
+    await c.env.DB.prepare('UPDATE classes SET name = COALESCE(?, name), grade = COALESCE(?, grade), professor_id = COALESCE(?, professor_id) WHERE id = ?')
+        .bind(params.name ?? null, params.grade ?? null, params.professor_id ?? null, id).run()
     return c.json({ success: true })
 })
 

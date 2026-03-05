@@ -117,22 +117,75 @@ const ExportReportsPanel: React.FC = () => {
         const totalAbsent = students.reduce((acc, s) => acc + s.absent, 0);
         const totalJustified = students.reduce((acc, s) => acc + s.justified, 0);
 
-        // Header
+        // Header Background
+        doc.setFillColor(99, 102, 241); // indigo-500
+        doc.rect(0, 0, 210, 65, 'F');
+
         doc.setFontSize(22);
-        doc.setTextColor(63, 70, 229); // Indigo-600
-        doc.text("Asistencia Escolar - Adsum", 14, 20);
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.text("Reporte de Asistencia", 14, 22);
 
-        doc.setFontSize(16);
-        doc.setTextColor(31, 41, 55); // Gray-800
-        doc.text(reportType === 'summary' ? `Resumen Mensual de Asistencia` :
-            reportType === 'history' ? `Historial Detallado de Asistencia` :
-                `Calendario de Asistencia`, 14, 30);
+        const TitleType = reportType === 'summary' ? `Resumen Mensual` :
+            reportType === 'history' ? `Historial Detallado` : `Calendario de Asistencia`;
 
-        doc.setFontSize(11);
-        doc.setTextColor(75, 85, 99); // Gray-600
-        doc.text(`Aula: ${classInfo.name} (${classInfo.grade.replace('|', ' ')})`, 14, 40);
-        doc.text(`Periodo: ${monthName} ${period.year}`, 14, 46);
-        doc.text(`Presentes: ${totalPresent} | Ausentes: ${totalAbsent} | Justificados: ${totalJustified}`, 14, 52);
+        doc.setFontSize(12);
+        doc.setTextColor(224, 231, 255); // indigo-100
+        doc.setFont("helvetica", "normal");
+        doc.text(`${TitleType} • ${classInfo.name} (${classInfo.grade.replace('|', ' ')})`, 14, 30);
+
+        // Right side Period text
+        const periodStr = `Periodo: ${monthName} ${period.year}`;
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(255, 255, 255);
+        doc.text(periodStr, 210 - 14 - doc.getTextWidth(periodStr), 22);
+
+        // Draw Stats Cards
+        // Card 1
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(255, 255, 255);
+        doc.rect(14, 40, 42, 16, 'DF'); // x, y, w, h
+        doc.setTextColor(79, 70, 229);
+        doc.setFontSize(8);
+        doc.text("TOTAL ALUMNOS", 16, 46);
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${students.length}`, 16, 53);
+
+        // Card 2
+        doc.setFillColor(16, 185, 129); // emerald-500
+        doc.rect(60, 40, 42, 16, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text("PRESENTES", 62, 46);
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${totalPresent}`, 62, 53);
+
+        // Card 3
+        doc.setFillColor(244, 63, 94); // rose-500
+        doc.rect(106, 40, 42, 16, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text("AUSENTES", 108, 46);
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${totalAbsent}`, 108, 53);
+
+        // Card 4
+        doc.setFillColor(245, 158, 11); // amber-500
+        doc.rect(152, 40, 42, 16, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text("JUSTIFICADOS", 154, 46);
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${totalJustified}`, 154, 53);
+
 
         if (reportType === 'summary') {
             const tableData = students.map((s) => [
@@ -144,7 +197,7 @@ const ExportReportsPanel: React.FC = () => {
             ]);
 
             (doc as any).autoTable({
-                startY: 60,
+                startY: 75,
                 head: [['Estudiante', 'Presentes', 'Ausentes', 'Justificados', '% Asistencia']],
                 body: tableData,
                 theme: 'grid',
@@ -159,7 +212,7 @@ const ExportReportsPanel: React.FC = () => {
             ]);
 
             (doc as any).autoTable({
-                startY: 60,
+                startY: 75,
                 head: [['Fecha', 'Estudiante', 'Estado']],
                 body: tableData,
                 theme: 'grid',
@@ -180,7 +233,7 @@ const ExportReportsPanel: React.FC = () => {
             });
 
             (doc as any).autoTable({
-                startY: 60,
+                startY: 75,
                 head: head,
                 body: body,
                 theme: 'grid',

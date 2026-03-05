@@ -15,6 +15,8 @@ interface DataContextType {
     addStudentToClass: (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => void;
     removeStudentFromClass: (classId: string, studentId: string, user: User | null) => void;
     updateUser: (id: string, updatedUser: Partial<User>) => void;
+    addUser: (newUser: Omit<User, 'id' | 'avatar' | 'classes'>) => Promise<void>;
+    deleteUser: (id: string) => Promise<void>;
     saveAttendance: (record: AttendanceRecord, user?: User | null) => Promise<void>;
     deleteAttendance: (classId: string, date: string, user?: User | null) => Promise<void>;
     getClassStats: (classId: string) => { present: number; absent: number; justified: number; total: number };
@@ -229,7 +231,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ...prev,
                 users: prev.users.map(u => u.id === id ? { ...u, ...updatedUser } : u)
             }));
-        } catch (e) { alert('Error: ' + (e as Error).message); }
+        } catch (e) { alert('Error: ' + (e as Error).message); throw e; }
+    }, []);
+
+    const addUser = useCallback(async (newUser: Omit<User, 'id' | 'avatar' | 'classes'>) => {
+        try {
+            const res = await api.createUser(newUser);
+            setDataState(prev => ({
+                ...prev,
+                users: [...prev.users, res]
+            }));
+        } catch (e) { alert('Error: ' + (e as Error).message); throw e; }
+    }, []);
+
+    const deleteUser = useCallback(async (id: string) => {
+        try {
+            await api.deleteUser(id);
+            setDataState(prev => ({
+                ...prev,
+                users: prev.users.filter(u => u.id !== id)
+            }));
+        } catch (e) { alert('Error: ' + (e as Error).message); throw e; }
     }, []);
 
     const saveAttendance = useCallback(async (record: AttendanceRecord) => {
@@ -304,7 +326,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         <DataContext.Provider value={{
             data, isLoading, error: null,
             saveData, resetData, addClass, deleteClass, updateClass,
-            addStudentToClass, removeStudentFromClass, updateUser,
+            addStudentToClass, removeStudentFromClass, updateUser, addUser, deleteUser,
             saveAttendance, deleteAttendance, getClassStats
         }}>
             {children}

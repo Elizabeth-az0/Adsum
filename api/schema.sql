@@ -41,9 +41,6 @@ CREATE INDEX idx_attendance_class_date ON attendance (class_id, date);
 CREATE INDEX idx_students_class_id ON students (class_id);
 CREATE INDEX idx_classes_professor_id ON classes (professor_id);
 
--- Hash SHA-256 for '123' password is 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3'
+-- Hash SHA-256 for 'admin' password is '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'
 INSERT INTO users (id, name, username, password_hash, role) VALUES 
-('1', 'Director Principal', 'director', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3', 'DIRECTOR');
-
-INSERT INTO users (id, name, username, password_hash, role) VALUES 
-('2', 'Profesor Demo', 'profesor', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3', 'PROFESSOR');
+('1', 'Director Principal', 'director', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', 'DIRECTOR');

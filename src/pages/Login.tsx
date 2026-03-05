@@ -59,7 +59,7 @@ const Login: React.FC = () => {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 placeholder-slate-400 transition-all"
-                                placeholder="director o profesor"
+                                placeholder="tu usuario"
                             />
                         </div>
                     </div>

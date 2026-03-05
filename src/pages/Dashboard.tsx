@@ -11,20 +11,19 @@ const Dashboard: React.FC = () => {
 
     const today = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    // Calculate Global Stats
+    // sacamos los números gruesos del día
     const stats = useMemo(() => {
         let totalStudents = 0;
         let totalPresent = 0;
         let totalAbsent = 0;
         let riskCount = 0;
 
-        // Filter classes based on role
+        // vemos si eres profe o dire para traer tus cosas
         const myClasses = data.classes.filter(c =>
             user?.role === 'DIRECTOR' || c.professorId === user?.id
         );
 
-        // Get unique students from my classes to avoid double counting if student is in multiple classes (though logic below simplifies this)
-        // For simplicity, we'll iterate through students map and check if they belong to any of my classes
+        // nos quedamos con nuestros alumnos sin repetir
         const myStudentIds = new Set<string>();
         myClasses.forEach(c => c.studentIds.forEach(id => myStudentIds.add(id)));
 
@@ -33,17 +32,15 @@ const Dashboard: React.FC = () => {
             if (s) {
                 totalStudents++;
                 if (s.risk) riskCount++;
-                // For daily stats, we need to check today's attendance records
-                // This is a bit complex as 'attendanceHistory' is aggregate.
-                // We need to look at 'attendance' array for today.
+                // chequeamos en la lista de hoy a ver qué onda
             }
         });
 
-        // Calculate today's attendance
+        // asis de hoy
         const todayISO = getLocalISODate();
         const todaysRecords = data.attendance.filter(r => r.date === todayISO);
 
-        // Filter records for my classes
+        // solo mis salones
         const myClassIds = myClasses.map(c => c.id);
         const myTodaysRecords = todaysRecords.filter(r => myClassIds.includes(r.classId));
 
@@ -54,10 +51,7 @@ const Dashboard: React.FC = () => {
             });
         });
 
-        // If no attendance taken today, these will be 0.
-        // Attendance % is based on history for the KPI card usually, or today?
-        // Requirement says: "Métricas del día en tiempo real: porcentaje de asistencia global"
-        // So it implies today's attendance.
+        // el ref de porcentaje de hoy
 
         const attendanceRate = (totalPresent + totalAbsent) > 0
             ? Math.round((totalPresent / (totalPresent + totalAbsent)) * 100)
@@ -79,7 +73,7 @@ const Dashboard: React.FC = () => {
 
     return (
         <div className="space-y-8">
-            {/* Header */}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900">Hola, {(user?.name || user?.username)?.split(' ')[0]} 👋</h1>
@@ -90,7 +84,7 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* KPI Cards */}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                     <div className="flex items-center justify-between mb-4">
@@ -142,7 +136,7 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Classes List */}
+
             <div>
                 <h2 className="text-xl font-bold text-slate-900 mb-4">Todas las Aulas</h2>
                 {myClasses.length > 0 ? (

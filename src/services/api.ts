@@ -18,7 +18,7 @@ const checkError = async (res: Response, defaultMessage: string) => {
 };
 
 export const api = {
-    // Auth
+    // auth / login
     login: async (credentials: any) => {
         const res = await fetch(`${API_URL}/login`, {
             method: 'POST',
@@ -29,7 +29,7 @@ export const api = {
         return res.json();
     },
 
-    // Users
+    // profes y dire
     getUsers: async () => {
         const res = await fetch(`${API_URL}/users`, { headers: getHeaders() });
         await checkError(res, 'Error al cargar usuarios');
@@ -62,7 +62,7 @@ export const api = {
         return res.json();
     },
 
-    // Classes
+    // salones
     getClasses: async () => {
         const res = await fetch(`${API_URL}/classes`, { headers: getHeaders() });
         await checkError(res, 'Error al cargar clases');
@@ -95,7 +95,7 @@ export const api = {
         return res.json();
     },
 
-    // Students
+    // los alumnos
     getStudents: async (classId: string, signal?: AbortSignal) => {
         const res = await fetch(`${API_URL}/students/${classId}`, { headers: getHeaders(), signal });
         await checkError(res, 'Error al cargar estudiantes');
@@ -119,7 +119,7 @@ export const api = {
         return res.json();
     },
 
-    // Attendance
+    // la asistencia
     getAttendance: async (classId?: string, date?: string, signal?: AbortSignal) => {
         let url = `${API_URL}/attendance`;
         const params = new URLSearchParams();
@@ -149,7 +149,7 @@ export const api = {
         return res.json();
     },
 
-    // Reports
+    // data para reportes
     getReports: async (from: string, to: string, signal?: AbortSignal) => {
         const res = await fetch(`${API_URL}/reports?from=${from}&to=${to}`, { headers: getHeaders(), signal });
         await checkError(res, 'Error al cargar reportes');

@@ -8,7 +8,7 @@ const Admin: React.FC = () => {
     const { data, saveData, resetData, updateUser } = useData();
     const { user } = useAuth();
 
-    // User Form State
+    // info para crear o editar profes
     const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'PROFESSOR' as 'PROFESSOR' | 'DIRECTOR' });
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [userToDelete, setUserToDelete] = useState<string | null>(null);
@@ -100,9 +100,9 @@ const Admin: React.FC = () => {
                 </button>
             </div>
 
-            {/* Main Content */}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6">
-                {/* Create User Form */}
+
                 <div className="lg:col-span-1">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 sticky top-8">
                         <div className="flex items-center justify-between mb-6">
@@ -156,7 +156,7 @@ const Admin: React.FC = () => {
                     </div>
                 </div>
 
-                {/* User List */}
+
                 <div className="lg:col-span-2 space-y-4">
                     {data.users.filter(u => u.role === 'PROFESSOR').map((u, idx) => (
                         <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both" style={{ animationDelay: `${idx * 50}ms` }}>
@@ -194,7 +194,7 @@ const Admin: React.FC = () => {
                         </div>
                     ))}
                 </div>
-                {/* Modals */}
+
                 {editingUserId && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
                         <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden scale-in animate-in zoom-in-95 duration-200">

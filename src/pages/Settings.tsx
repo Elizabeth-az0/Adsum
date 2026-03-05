@@ -29,7 +29,7 @@ const Settings: React.FC = () => {
         <div className="space-y-8 max-w-4xl mx-auto">
             <h1 className="text-2xl font-bold text-slate-900">Ajustes</h1>
 
-            {/* Profile Section (Only for Director) */}
+            {/* actualizar nombre */}
             {user?.role === 'DIRECTOR' && (
                 <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8 animate-in fade-in duration-200">
                     <div className="flex items-center gap-4 mb-6">
@@ -72,7 +72,7 @@ const Settings: React.FC = () => {
                 </div>
             )}
 
-            {/* Font Size Section */}
+            {/* para ver más grande la letra */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 transition-all duration-200 ease-in-out">
                 <div className="flex items-center gap-4 mb-6">
                     <div className="p-3 bg-primary-50 text-primary-600 rounded-xl">
@@ -127,7 +127,7 @@ const Settings: React.FC = () => {
                 </div>
             </div>
 
-            {/* Guides Section */}
+            {/* sección de ayuda */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
                 <div className="flex items-center gap-4 mb-6">
                     <div className="p-3 bg-green-50 text-green-600 rounded-xl">

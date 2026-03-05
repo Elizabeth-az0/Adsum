@@ -3,7 +3,7 @@ export type Role = 'DIRECTOR' | 'PROFESSOR';
 export interface User {
     id: string;
     username: string;
-    password?: string; // Only used for auth check, not stored in state if possible, or stored securely? LocalStorage is not secure, but per requirements we use it.
+    password?: string; // ojito, no tan seguro pero toca guardarla acá
     name: string;
     role: Role;
     avatar?: string;
@@ -20,12 +20,12 @@ export interface Student {
         justified: number;
         total: number;
     };
-    risk: boolean; // < 75% attendance
+    risk: boolean; // si tiene 10 o más faltas
 }
 
 export interface AttendanceRecord {
     id: string;
-    date: string; // ISO date string YYYY-MM-DD
+    date: string; // fecha formato tranqui YYYY-MM-DD
     classId: string;
     records: {
         studentId: string;
@@ -35,16 +35,16 @@ export interface AttendanceRecord {
 
 export interface ClassGroup {
     id: string;
-    name: string; // e.g. "Matemáticas 1A"
-    grado: string; // e.g. "1ro"
-    seccion: string; // e.g. "A"
-    professorId: string; // User ID
+    name: string; // ej. Mates piolas
+    grado: string; // ej. 1ro
+    seccion: string; // ej. A
+    professorId: string; // el id del profe
     studentIds: string[];
 }
 
 export interface AppData {
     users: User[];
     classes: ClassGroup[];
-    students: Record<string, Student>; // Map for easier access
+    students: Record<string, Student>; // mapeado por id para buscar rápido
     attendance: AttendanceRecord[];
 }

@@ -3,14 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Trash2, Check, X, Clock, Save, CheckCircle2, ArrowLeft, Search } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, getLocalISODate } from '../lib/utils';
 import type { AttendanceRecord } from '../types';
 import ConfirmModal from '../components/ConfirmModal';
-
-const getLocalISODate = () => {
-    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-    return new Date(Date.now() - tzoffset).toISOString().split('T')[0];
-};
 
 const Attendance: React.FC = () => {
     const [searchParams] = useSearchParams();

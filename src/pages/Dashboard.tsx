@@ -3,11 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { Users, UserCheck, UserX, AlertTriangle, Calendar, ArrowRight, CheckCircle2, Circle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { cn } from '../lib/utils';
+import { cn, getLocalISODate } from '../lib/utils';
 
 const Dashboard: React.FC = () => {
     const { user } = useAuth();
-    const { data, getClassStats } = useData();
+    const { data } = useData();
 
     const today = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -40,7 +40,7 @@ const Dashboard: React.FC = () => {
         });
 
         // Calculate today's attendance
-        const todayISO = new Date().toISOString().split('T')[0];
+        const todayISO = getLocalISODate();
         const todaysRecords = data.attendance.filter(r => r.date === todayISO);
 
         // Filter records for my classes
@@ -75,7 +75,7 @@ const Dashboard: React.FC = () => {
         user?.role === 'DIRECTOR' || c.professorId === user?.id
     );
 
-    const todayISO = new Date().toISOString().split('T')[0];
+    const todayISO = getLocalISODate();
 
     return (
         <div className="space-y-8">
@@ -149,15 +149,13 @@ const Dashboard: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {myClasses.map(cls => {
                             const isTaken = data.attendance.some(r => r.classId === cls.id && r.date === todayISO);
-                            const stats = getClassStats(cls.id);
-                            const attendancePct = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
 
                             return (
                                 <div key={cls.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
                                             <h3 className="font-bold text-lg text-slate-900">{cls.name}</h3>
-                                            <p className="text-slate-500 text-sm">{cls.room}</p>
+                                            <p className="text-slate-500 text-sm">Aula: {cls.grado} {cls.seccion}</p>
                                         </div>
                                         {isTaken ? (
                                             <div className="text-green-500">
@@ -171,16 +169,6 @@ const Dashboard: React.FC = () => {
                                     </div>
 
                                     <div className="mb-6">
-                                        <div className="flex justify-between text-sm mb-2">
-                                            <span className="text-slate-500">Asistencia Histórica</span>
-                                            <span className="font-bold text-slate-900">{attendancePct}%</span>
-                                        </div>
-                                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                            <div
-                                                className={cn("h-full rounded-full", attendancePct >= 90 ? "bg-green-500" : attendancePct >= 75 ? "bg-amber-500" : "bg-red-500")}
-                                                style={{ width: `${attendancePct}%` }}
-                                            />
-                                        </div>
                                     </div>
 
                                     <Link

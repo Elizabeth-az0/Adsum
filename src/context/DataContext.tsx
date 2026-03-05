@@ -53,11 +53,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return;
             }
             try {
-                const [usersRaw, classesRaw, allAttendanceRaw] = await Promise.all([
+                const [usersRaw, classesRaw] = await Promise.all([
                     user.role === 'DIRECTOR' ? api.getUsers() : Promise.resolve([]),
-                    api.getClasses(),
-                    api.getAttendance() // Fetch full relevant attendance history in 1 query!
+                    api.getClasses()
                 ]);
+
+                // The API requires classId or date. We fetch attendance for all classes.
+                const attendancePromises = classesRaw.map((c: any) => api.getAttendance(c.id).catch(() => []));
+                const attendanceResults = await Promise.all(attendancePromises);
+                const allAttendanceRaw = attendanceResults.flat();
 
                 const loadedClasses = classesRaw.map((c: any) => {
                     const gradeParts = (c.grade || '').split('|');

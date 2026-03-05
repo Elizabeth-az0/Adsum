@@ -17,8 +17,9 @@ const Settings: React.FC = () => {
         e.preventDefault();
         if (name.trim() && user) {
             const updatedName = name.trim();
-            updateUser(user.id, { name: updatedName });
-            updateCurrentUser({ name: updatedName });
+            const updates = { name: updatedName, role: user.role };
+            updateUser(user.id, updates);
+            updateCurrentUser(updates);
             setSuccessMessage('Nombre actualizado correctamente');
             setTimeout(() => setSuccessMessage(''), 3000);
         }

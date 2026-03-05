@@ -83,7 +83,7 @@ const Attendance: React.FC = () => {
         setAttendanceState(prev => ({ ...prev, ...newState }));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!selectedClass) return;
 
         const missing = selectedClass.studentIds.some(id => !attendanceState[id]);
@@ -104,7 +104,7 @@ const Attendance: React.FC = () => {
         };
 
         try {
-            saveAttendance(record, user);
+            await saveAttendance(record, user);
             setError('');
             setSuccess('Asistencia guardada correctamente.');
             setTimeout(() => {
@@ -120,11 +120,11 @@ const Attendance: React.FC = () => {
         setIsDeleteModalOpen(true);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (!selectedClass) return;
         const todayISO = new Date().toISOString().split('T')[0];
         try {
-            deleteAttendance(selectedClass.id, todayISO, user);
+            await deleteAttendance(selectedClass.id, todayISO, user);
             setAttendanceState({});
             setSuccess('Registro eliminado correctamente.');
             setError('');

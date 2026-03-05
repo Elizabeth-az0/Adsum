@@ -59,13 +59,18 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, isLoadi
         );
     }
 
-    const { classInfo, period, students, detailedAttendance, summary } = data;
+    const { classInfo, period, students, detailedAttendance } = data;
+
+    // Calcular totales globales para el encabezado
+    const totalPresent = students.reduce((acc, s) => acc + s.present, 0);
+    const totalAbsent = students.reduce((acc, s) => acc + s.absent, 0);
+    const totalJustified = students.reduce((acc, s) => acc + s.justified, 0);
 
     // Helper to get day from date string
-    const getDay = (dateStr: string) => new Date(dateStr).getUTCDate();
+    const getDay = (dateStr: string) => new Date(dateStr + 'T12:00:00').getUTCDate();
 
     // Generate days for calendar view (only days with records)
-    const activeDays = Array.from(new Set(detailedAttendance.map((a: any) => getDay(a.date)))).sort((a: any, b: any) => a - b);
+    const activeDays = Array.from(new Set(detailedAttendance.map((a) => getDay(a.date)))).sort((a, b) => a - b);
 
     return (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-800 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -84,20 +89,22 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, isLoadi
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mt-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                        <p className="text-xs text-indigo-100 uppercase font-bold">Total Estudiantes</p>
-                        <p className="text-2xl font-black">{summary.totalStudents}</p>
+                        <p className="text-[10px] text-indigo-100 uppercase font-black tracking-widest">Total Alumnos</p>
+                        <p className="text-xl font-black">{students.length}</p>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                        <p className="text-xs text-indigo-100 uppercase font-bold">Promedio Asistencia</p>
-                        <div className="flex items-baseline">
-                            <p className="text-2xl font-black">{summary.avgAttendance}%</p>
-                        </div>
+                    <div className="bg-emerald-500/20 backdrop-blur-sm rounded-lg p-3 border border-emerald-400/30">
+                        <p className="text-[10px] text-emerald-100 uppercase font-black tracking-widest">Presentes</p>
+                        <p className="text-xl font-black">{totalPresent}</p>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                        <p className="text-xs text-indigo-100 uppercase font-bold">Alumnos en Riesgo</p>
-                        <p className="text-2xl font-black">{summary.atRiskStudents}</p>
+                    <div className="bg-rose-500/20 backdrop-blur-sm rounded-lg p-3 border border-rose-400/30">
+                        <p className="text-[10px] text-rose-100 uppercase font-black tracking-widest">Ausentes</p>
+                        <p className="text-xl font-black">{totalAbsent}</p>
+                    </div>
+                    <div className="bg-amber-500/20 backdrop-blur-sm rounded-lg p-3 border border-amber-400/30">
+                        <p className="text-[10px] text-amber-100 uppercase font-black tracking-widest">Justificados</p>
+                        <p className="text-xl font-black">{totalJustified}</p>
                     </div>
                 </div>
             </div>

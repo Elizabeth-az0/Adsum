@@ -93,11 +93,18 @@ const ExportReportsPanel: React.FC = () => {
 
     const handleExport = () => {
         if (!reportData) return;
-
-        if (exportFormat === 'pdf') {
-            exportToPDF();
-        } else {
-            exportToExcel();
+        setIsLoading(true);
+        try {
+            if (exportFormat === 'pdf') {
+                exportToPDF();
+            } else {
+                exportToExcel();
+            }
+        } catch (err: any) {
+            console.error('Export error:', err);
+            setFetchError(`Error al exportar: ${err.message}`);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -106,6 +113,11 @@ const ExportReportsPanel: React.FC = () => {
         const doc = new jsPDF();
         const { classInfo, period, students, detailedAttendance } = reportData;
         const monthName = new Date(`${period.year}-${period.month}-01T12:00:00`).toLocaleString('es-ES', { month: 'long' });
+
+        // Totales para el reporte
+        const totalPresent = students.reduce((acc, s) => acc + s.present, 0);
+        const totalAbsent = students.reduce((acc, s) => acc + s.absent, 0);
+        const totalJustified = students.reduce((acc, s) => acc + s.justified, 0);
 
         // Header
         doc.setFontSize(22);
@@ -122,10 +134,10 @@ const ExportReportsPanel: React.FC = () => {
         doc.setTextColor(75, 85, 99); // Gray-600
         doc.text(`Aula: ${classInfo.name} (${classInfo.grade.replace('|', ' ')})`, 14, 40);
         doc.text(`Periodo: ${monthName} ${period.year}`, 14, 46);
-        doc.text(`Fecha de exportación: ${new Date().toLocaleDateString('es-ES')}`, 14, 52);
+        doc.text(`Presentes: ${totalPresent} | Ausentes: ${totalAbsent} | Justificados: ${totalJustified}`, 14, 52);
 
         if (reportType === 'summary') {
-            const tableData = students.map((s: any) => [
+            const tableData = students.map((s) => [
                 s.studentName,
                 s.present,
                 s.absent,
@@ -138,14 +150,13 @@ const ExportReportsPanel: React.FC = () => {
                 head: [['Estudiante', 'Presentes', 'Ausentes', 'Justificados', '% Asistencia']],
                 body: tableData,
                 theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
-                alternateRowStyles: { fillColor: [249, 250, 251] },
-                styles: { fontSize: 10, cellPadding: 3 },
+                headStyles: { fillColor: [79, 70, 229], textColor: 255 },
+                styles: { fontSize: 9 },
             });
         } else if (reportType === 'history') {
-            const tableData = detailedAttendance.map((a: any) => [
+            const tableData = detailedAttendance.map((a) => [
                 new Date(a.date + 'T12:00:00').toLocaleDateString('es-ES'),
-                students.find((s: any) => s.studentId === a.student_id)?.studentName || 'Estudiante',
+                students.find((s) => s.studentId === a.student_id)?.studentName || 'Estudiante',
                 a.status === 'PRESENT' ? 'Presente' : a.status === 'ABSENT' ? 'Ausente' : 'Justificado'
             ]);
 
@@ -155,16 +166,16 @@ const ExportReportsPanel: React.FC = () => {
                 body: tableData,
                 theme: 'grid',
                 headStyles: { fillColor: [79, 70, 229], textColor: 255 },
-                styles: { fontSize: 10 },
+                styles: { fontSize: 9 },
             });
         } else if (reportType === 'calendar') {
-            const activeDays = Array.from(new Set(detailedAttendance.map((a: { date: string }) => new Date(a.date).getUTCDate()))).sort((a: number, b: number) => a - b);
+            const activeDays = Array.from(new Set(detailedAttendance.map((a) => new Date(a.date + 'T12:00:00').getUTCDate()))).sort((a, b) => a - b);
 
             const head = [['Estudiante', ...activeDays.map(d => d.toString())]];
-            const body = students.map(s => {
+            const body = students.map((s) => {
                 const row: (string | number)[] = [s.studentName.split(' ')[0]];
                 activeDays.forEach(day => {
-                    const att = detailedAttendance.find(a => a.student_id === s.studentId && new Date(a.date).getUTCDate() === day);
+                    const att = detailedAttendance.find(a => a.student_id === s.studentId && new Date(a.date + 'T12:00:00').getUTCDate() === day);
                     row.push(att ? (att.status === 'PRESENT' ? 'P' : att.status === 'ABSENT' ? 'A' : 'J') : '-');
                 });
                 return row;
@@ -176,17 +187,17 @@ const ExportReportsPanel: React.FC = () => {
                 body: body,
                 theme: 'grid',
                 headStyles: { fillColor: [79, 70, 229], textColor: 255, fontSize: 8 },
-                styles: { fontSize: 7, cellPadding: 1, halign: 'center' },
+                styles: { fontSize: 7, halign: 'center' },
                 columnStyles: { 0: { halign: 'left', minCellWidth: 30 } }
             });
         }
 
-        doc.save(`Reporte_${classInfo.name.replace(/\s+/g, '_')}_${month}_${year}.pdf`);
+        doc.save(`Reporte_Adsum_${classInfo.name.replace(/\s+/g, '_')}_${period.month}_${period.year}.pdf`);
     };
 
     const exportToExcel = () => {
         if (!reportData) return;
-        const { classInfo, students, detailedAttendance } = reportData;
+        const { classInfo, period, students, detailedAttendance } = reportData;
         let dataToExport: any[] = [];
 
         if (reportType === 'summary') {
@@ -218,7 +229,7 @@ const ExportReportsPanel: React.FC = () => {
         const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
-        XLSX.writeFile(wb, `Reporte_${classInfo.name.replace(/\s+/g, '_')}_${month}_${year}.xlsx`);
+        XLSX.writeFile(wb, `Reporte_Adsum_${classInfo.name.replace(/\s+/g, '_')}_${period.month}_${period.year}.xlsx`);
     };
 
     return (

@@ -40,11 +40,7 @@ const Reports: React.FC = () => {
     const riskStudents = useMemo(() => {
         return Object.values(data.students)
             .filter(s => s.risk && myClassIds.some(cid => data.classes.find(c => c.id === cid)?.studentIds.includes(s.id)))
-            .sort((a, b) => {
-                const aRate = a.attendanceHistory.total ? (a.attendanceHistory.present / a.attendanceHistory.total) : 0;
-                const bRate = b.attendanceHistory.total ? (b.attendanceHistory.present / b.attendanceHistory.total) : 0;
-                return aRate - bRate;
-            });
+            .sort((a, b) => b.attendanceHistory.absent - a.attendanceHistory.absent);
     }, [data.students, myClassIds, data.classes]);
 
     // Chart Data
@@ -176,8 +172,8 @@ const Reports: React.FC = () => {
                         <AlertTriangle className="w-6 h-6" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-slate-900">Estudiantes en Riesgo Histórico</h3>
-                        <p className="text-sm text-slate-500">Asistencia histórica por debajo del 75%</p>
+                        <h3 className="font-bold text-slate-900">Estudiantes con más faltas</h3>
+                        <p className="text-sm text-slate-500">10 o más faltas acumuladas (Máx. permitido: 30)</p>
                     </div>
                 </div>
 
@@ -186,16 +182,16 @@ const Reports: React.FC = () => {
                         <thead>
                             <tr className="border-b border-slate-100 text-slate-500 text-sm">
                                 <th className="pb-4 font-medium">Estudiante</th>
-                                <th className="pb-4 font-medium">Asistencia</th>
+                                <th className="pb-4 font-medium">Clase</th>
                                 <th className="pb-4 font-medium">Faltas totales</th>
-                                <th className="pb-4 font-medium">Estado</th>
+                                <th className="pb-4 font-medium">Asistencia</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {riskStudents.length > 0 ? (
                                 riskStudents.map(student => {
-                                    const rawRate = (student.attendanceHistory.present / student.attendanceHistory.total) * 100;
-                                    const rate = isNaN(rawRate) ? 0 : Math.round(rawRate);
+                                    const rawRate = student.attendanceHistory.total ? (student.attendanceHistory.present / student.attendanceHistory.total) * 100 : 0;
+                                    const rate = Math.round(rawRate);
                                     return (
                                         <tr key={student.id} className="group hover:bg-slate-50 transition-colors">
                                             <td className="py-4">
@@ -206,14 +202,14 @@ const Reports: React.FC = () => {
                                                     <span className="font-medium text-slate-900">{student.firstName} {student.lastName}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4">
-                                                <span className="font-bold text-red-600">{rate}%</span>
+                                            <td className="py-4 text-slate-600">
+                                                {data.classes.find(c => c.studentIds.includes(student.id))?.name || 'N/A'}
                                             </td>
-                                            <td className="py-4 text-slate-600">{student.attendanceHistory.absent}</td>
                                             <td className="py-4">
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                                                    Crítico
-                                                </span>
+                                                <span className="font-bold text-red-600">{student.attendanceHistory.absent} / 30</span>
+                                            </td>
+                                            <td className="py-4 text-slate-600">
+                                                {rate}%
                                             </td>
                                         </tr>
                                     );
@@ -221,7 +217,7 @@ const Reports: React.FC = () => {
                             ) : (
                                 <tr>
                                     <td colSpan={4} className="py-8 text-center text-slate-500">
-                                        No hay estudiantes en riesgo. ¡Buen trabajo!
+                                        No hay estudiantes con 10 o más faltas.
                                     </td>
                                 </tr>
                             )}

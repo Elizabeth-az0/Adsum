@@ -80,8 +80,7 @@ const Classes: React.FC = () => {
                         name: newClass.name,
                         grado: newClass.grado,
                         seccion: newClass.seccion,
-                        professorId: newClass.professorId,
-                        studentIds: []
+                        professorId: newClass.professorId
                     }, user);
                     alert('Aula creada con éxito');
                 }
@@ -230,16 +229,16 @@ const Classes: React.FC = () => {
                         {data.classes.map(c => {
                             const professor = data.users.find(u => u.id === c.professorId);
                             return (
-                                <div key={c.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
+                                <div key={c.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
                                         <h4 className="font-bold text-slate-900">{c.name}</h4>
-                                        <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
+                                        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500 mt-1">
                                             <span className="font-medium text-slate-600">{c.grado}</span>
-                                            <span className="text-slate-300">•</span>
+                                            <span className="text-slate-300 hidden sm:inline">•</span>
                                             <span>Sección {c.seccion}</span>
-                                            <span className="text-slate-300">•</span>
+                                            <span className="text-slate-300 hidden sm:inline">•</span>
                                             <span>Prof. {professor?.name || 'Sin asignar'}</span>
-                                            <span className="text-slate-300">•</span>
+                                            <span className="text-slate-300 hidden sm:inline">•</span>
                                             <span>{c.studentIds.length} Estudiantes</span>
                                         </div>
                                     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Trash2, Check, X, Clock, Save, CheckCircle2, ArrowLeft, Search } from 'lucide-react';
@@ -9,7 +9,6 @@ import ConfirmModal from '../components/ConfirmModal';
 
 const Attendance: React.FC = () => {
     const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
     const classIdParam = searchParams.get('classId');
     const { data, saveAttendance, deleteAttendance } = useData();
     const { user } = useAuth();
@@ -144,7 +143,7 @@ const Attendance: React.FC = () => {
     const hasRecordToday = data.attendance.some(r => r.classId === selectedClassId && r.date === todayISO);
 
     // If no class is selected, show the class selection grid
-    if (!selectedClassId) {
+    if (!selectedClassId || !selectedClass) {
         return (
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -172,7 +171,7 @@ const Attendance: React.FC = () => {
                                 <div className="flex justify-between items-start w-full">
                                     <h3 className="text-xl font-bold text-slate-900">{cls.name}</h3>
                                     <span className="text-sm font-medium bg-primary-50 text-primary-700 px-3 py-1 rounded-full">
-                                        {cls.room}
+                                        {cls.grado} {cls.seccion}
                                     </span>
                                 </div>
                                 <p className="text-slate-500 text-sm mt-2">{cls.studentIds.length} Estudiantes</p>
@@ -183,6 +182,68 @@ const Attendance: React.FC = () => {
             </div>
         );
     }
+
+    const StudentCard = React.memo(({
+        student,
+        status,
+        onStatusChange,
+        index
+    }: {
+        student: any,
+        status?: 'PRESENT' | 'ABSENT' | 'JUSTIFIED',
+        onStatusChange: (id: string, status: 'PRESENT' | 'ABSENT' | 'JUSTIFIED') => void,
+        index: number
+    }) => {
+        return (
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both" style={{ animationDelay: `${Math.min(index * 20, 500)}ms` }}>
+                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-500 shrink-0">
+                    {student.firstName[0]}{student.lastName[0]}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-slate-900 truncate">{student.firstName} {student.lastName}</h3>
+                    <div className="flex gap-2 mt-3">
+                        <button
+                            onClick={() => onStatusChange(student.id, 'PRESENT')}
+                            className={cn(
+                                "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
+                                status === 'PRESENT'
+                                    ? "bg-green-500 text-white shadow-md shadow-green-500/20"
+                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                            )}
+                            title="Presente"
+                        >
+                            <Check className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={() => onStatusChange(student.id, 'ABSENT')}
+                            className={cn(
+                                "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
+                                status === 'ABSENT'
+                                    ? "bg-red-500 text-white shadow-md shadow-red-500/20"
+                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                            )}
+                            title="Ausente"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={() => onStatusChange(student.id, 'JUSTIFIED')}
+                            className={cn(
+                                "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
+                                status === 'JUSTIFIED'
+                                    ? "bg-amber-500 text-white shadow-md shadow-amber-500/20"
+                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                            )}
+                            title="Justificado"
+                        >
+                            <Clock className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    });
 
     return (
         <div className="space-y-6">
@@ -237,7 +298,7 @@ const Attendance: React.FC = () => {
                         )}
                         <button
                             onClick={handleSave}
-                            className="flex-1 md:flex-none bg-primary-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary-600/20"
+                            className="flex-1 md:flex-none bg-primary-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 shadow-none"
                         >
                             <Save className="w-5 h-5" />
                             {hasRecordToday ? 'Actualizar' : 'Guardar'}
@@ -272,7 +333,7 @@ const Attendance: React.FC = () => {
 
                     <button
                         onClick={markAllPresent}
-                        className="whitespace-nowrap px-4 py-3 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2"
+                        className="whitespace-nowrap px-4 py-3 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-none"
                     >
                         <CheckCircle2 className="w-5 h-5 text-green-600" />
                         Marcar Todos Presentes
@@ -283,53 +344,13 @@ const Attendance: React.FC = () => {
             {/* Student List */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {students.map((student, idx) => (
-                    <div key={student.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both" style={{ animationDelay: `${idx * 50}ms` }}>
-                        <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-500">
-                            {student.firstName[0]}{student.lastName[0]}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-slate-900 truncate">{student.firstName} {student.lastName}</h3>
-                            <div className="flex gap-2 mt-3">
-                                <button
-                                    onClick={() => handleStatusChange(student.id, 'PRESENT')}
-                                    className={cn(
-                                        "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
-                                        attendanceState[student.id] === 'PRESENT'
-                                            ? "bg-green-500 text-white shadow-md shadow-green-500/20"
-                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                                    )}
-                                    title="Presente"
-                                >
-                                    <Check className="w-5 h-5" />
-                                </button>
-                                <button
-                                    onClick={() => handleStatusChange(student.id, 'ABSENT')}
-                                    className={cn(
-                                        "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
-                                        attendanceState[student.id] === 'ABSENT'
-                                            ? "bg-red-500 text-white shadow-md shadow-red-500/20"
-                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                                    )}
-                                    title="Ausente"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                                <button
-                                    onClick={() => handleStatusChange(student.id, 'JUSTIFIED')}
-                                    className={cn(
-                                        "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
-                                        attendanceState[student.id] === 'JUSTIFIED'
-                                            ? "bg-amber-500 text-white shadow-md shadow-amber-500/20"
-                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                                    )}
-                                    title="Justificado"
-                                >
-                                    <Clock className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <StudentCard
+                        key={student.id}
+                        student={student}
+                        status={attendanceState[student.id]}
+                        onStatusChange={handleStatusChange}
+                        index={idx}
+                    />
                 ))}
             </div>
 

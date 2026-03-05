@@ -8,6 +8,15 @@ const getHeaders = () => {
     };
 };
 
+const checkError = async (res: Response, defaultMessage: string) => {
+    if (!res.ok) {
+        if (res.status === 401 || res.status === 403) throw new Error('UNAUTHORIZED');
+        let errorData;
+        try { errorData = await res.json(); } catch { }
+        throw new Error(errorData?.error || defaultMessage);
+    }
+};
+
 export const api = {
     // Auth
     login: async (credentials: any) => {
@@ -16,14 +25,14 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(credentials)
         });
-        if (!res.ok) throw new Error('Credenciales inválidas');
+        await checkError(res, 'Credenciales inválidas');
         return res.json();
     },
 
     // Users
     getUsers: async () => {
         const res = await fetch(`${API_URL}/users`, { headers: getHeaders() });
-        if (!res.ok) throw new Error('Error al cargar usuarios');
+        await checkError(res, 'Error al cargar usuarios');
         return res.json();
     },
     createUser: async (user: any) => {
@@ -32,7 +41,7 @@ export const api = {
             headers: getHeaders(),
             body: JSON.stringify(user)
         });
-        if (!res.ok) throw new Error('Error al crear usuario');
+        await checkError(res, 'Error al crear usuario');
         return res.json();
     },
     updateUser: async (id: string, user: any) => {
@@ -41,7 +50,7 @@ export const api = {
             headers: getHeaders(),
             body: JSON.stringify(user)
         });
-        if (!res.ok) throw new Error('Error al actualizar usuario');
+        await checkError(res, 'Error al actualizar usuario');
         return res.json();
     },
     deleteUser: async (id: string) => {
@@ -49,17 +58,14 @@ export const api = {
             method: 'DELETE',
             headers: getHeaders()
         });
-        if (!res.ok) throw new Error('Error al eliminar usuario');
+        await checkError(res, 'Error al eliminar usuario');
         return res.json();
     },
 
     // Classes
     getClasses: async () => {
         const res = await fetch(`${API_URL}/classes`, { headers: getHeaders() });
-        if (!res.ok) {
-            if (res.status === 401) throw new Error('UNAUTHORIZED');
-            throw new Error('Error al cargar clases');
-        }
+        await checkError(res, 'Error al cargar clases');
         return res.json();
     },
     createClass: async (data: any) => {
@@ -68,7 +74,7 @@ export const api = {
             headers: getHeaders(),
             body: JSON.stringify(data)
         });
-        if (!res.ok) throw new Error('Error al crear clase');
+        await checkError(res, 'Error al crear clase');
         return res.json();
     },
     updateClass: async (id: string, data: any) => {
@@ -77,7 +83,7 @@ export const api = {
             headers: getHeaders(),
             body: JSON.stringify(data)
         });
-        if (!res.ok) throw new Error('Error al actualizar clase');
+        await checkError(res, 'Error al actualizar clase');
         return res.json();
     },
     deleteClass: async (id: string) => {
@@ -85,14 +91,14 @@ export const api = {
             method: 'DELETE',
             headers: getHeaders()
         });
-        if (!res.ok) throw new Error('Error al eliminar clase');
+        await checkError(res, 'Error al eliminar clase');
         return res.json();
     },
 
     // Students
     getStudents: async (classId: string, signal?: AbortSignal) => {
         const res = await fetch(`${API_URL}/students/${classId}`, { headers: getHeaders(), signal });
-        if (!res.ok) throw new Error('Error al cargar estudiantes');
+        await checkError(res, 'Error al cargar estudiantes');
         return res.json();
     },
     createStudent: async (data: any) => {
@@ -101,7 +107,7 @@ export const api = {
             headers: getHeaders(),
             body: JSON.stringify(data)
         });
-        if (!res.ok) throw new Error('Error al crear estudiante');
+        await checkError(res, 'Error al crear estudiante');
         return res.json();
     },
     deleteStudent: async (id: string) => {
@@ -109,14 +115,20 @@ export const api = {
             method: 'DELETE',
             headers: getHeaders()
         });
-        if (!res.ok) throw new Error('Error al eliminar estudiante');
+        await checkError(res, 'Error al eliminar estudiante');
         return res.json();
     },
 
     // Attendance
-    getAttendance: async (classId: string, date: string, signal?: AbortSignal) => {
-        const res = await fetch(`${API_URL}/attendance?classId=${classId}&date=${date}`, { headers: getHeaders(), signal });
-        if (!res.ok) throw new Error('Error al cargar asistencia');
+    getAttendance: async (classId?: string, date?: string, signal?: AbortSignal) => {
+        let url = `${API_URL}/attendance`;
+        const params = new URLSearchParams();
+        if (classId) params.append('classId', classId);
+        if (date) params.append('date', date);
+        if (params.toString()) url += `?${params.toString()}`;
+
+        const res = await fetch(url, { headers: getHeaders(), signal });
+        await checkError(res, 'Error al cargar asistencia');
         return res.json();
     },
     saveAttendance: async (data: { class_id: string, date: string, records: any[] }) => {
@@ -125,7 +137,7 @@ export const api = {
             headers: getHeaders(),
             body: JSON.stringify(data)
         });
-        if (!res.ok) throw new Error('Error al guardar asistencia');
+        await checkError(res, 'Error al guardar asistencia');
         return res.json();
     },
     deleteAttendance: async (classId: string, date: string) => {
@@ -133,14 +145,14 @@ export const api = {
             method: 'DELETE',
             headers: getHeaders()
         });
-        if (!res.ok) throw new Error('Error al eliminar asistencia');
+        await checkError(res, 'Error al eliminar asistencia');
         return res.json();
     },
 
     // Reports
     getReports: async (from: string, to: string, signal?: AbortSignal) => {
         const res = await fetch(`${API_URL}/reports?from=${from}&to=${to}`, { headers: getHeaders(), signal });
-        if (!res.ok) throw new Error('Error al cargar reportes');
+        await checkError(res, 'Error al cargar reportes');
         return res.json();
     }
 };

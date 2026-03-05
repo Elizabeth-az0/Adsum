@@ -40,7 +40,7 @@ const Login: React.FC = () => {
                 <div className="flex flex-col items-center mb-8">
                     <img src="/LogoAdsum1.svg" alt="Adsum Logo" className="h-24 w-auto mb-4 xl:-ml-4 translate-x-4" />
                     <h1 className="text-3xl font-bold text-slate-900 text-center">Adsum</h1>
-                    <p className="text-slate-500 mt-2 text-center">Gestión escolar inteligente</p>
+                    <p className="text-slate-500 mt-2 text-center">Control de asistencia</p>
                 </div>
 
                 {error && (
@@ -92,11 +92,6 @@ const Login: React.FC = () => {
                         )}
                     </button>
                 </form>
-
-                <div className="mt-8 text-center text-xs text-slate-500">
-                    <p>Credenciales Demo:</p>
-                    <p className="mt-1">director / 123 • profesor / 123</p>
-                </div>
             </div>
         </div>
     );

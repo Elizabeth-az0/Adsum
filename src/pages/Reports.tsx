@@ -16,7 +16,7 @@ const Reports: React.FC = () => {
     );
     const myClassIds = myClasses.map(c => c.id);
 
-    // Filter relevant attendance records based on time filter
+    // filtramos la asis según el tiempo
     const filteredAttendance = useMemo(() => {
         const now = new Date();
         now.setHours(23, 59, 59, 999);
@@ -36,20 +36,20 @@ const Reports: React.FC = () => {
         });
     }, [data.attendance, timeFilter, myClassIds]);
 
-    // Risk List (based on historical total, unaffected by filter for accuracy of 'Riesgo')
+    // los que están en rojo (por el total histórico)
     const riskStudents = useMemo(() => {
         return Object.values(data.students)
             .filter(s => s.risk && myClassIds.some(cid => data.classes.find(c => c.id === cid)?.studentIds.includes(s.id)))
             .sort((a, b) => b.attendanceHistory.absent - a.attendanceHistory.absent);
     }, [data.students, myClassIds, data.classes]);
 
-    // Chart Data
+    // data para los gráficos
     const chartData = useMemo(() => {
         let totalPresent = 0;
         let totalAbsent = 0;
         let totalJustified = 0;
 
-        // Bar Chart Data (Trend based on filter)
+        // barras según el filtro
         let daysToGenerate = 5;
         if (timeFilter === 'today') daysToGenerate = 1;
         if (timeFilter === 'week') daysToGenerate = 7;
@@ -72,7 +72,7 @@ const Reports: React.FC = () => {
                 });
             });
 
-            // Adjust label based on filter length to avoid crowding
+            // achicamos el texto para que no se amontone
             let name = new Date(dateStr + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short' });
             if (timeFilter === 'month') {
                 const d = new Date(dateStr + 'T12:00:00');
@@ -113,7 +113,7 @@ const Reports: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Bar Chart */}
+
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                     <h3 className="font-bold text-slate-900 mb-6">Tendencia de Asistencia</h3>
                     <div className="h-[300px] w-full">
@@ -134,7 +134,7 @@ const Reports: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Pie Chart */}
+
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                     <h3 className="font-bold text-slate-900 mb-6">Proporción en el periodo</h3>
                     <div className="h-[300px] w-full flex items-center justify-center">
@@ -165,7 +165,7 @@ const Reports: React.FC = () => {
                 </div>
             </div>
 
-            {/* Risk List */}
+
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-red-100 text-red-600 rounded-lg">
@@ -226,7 +226,7 @@ const Reports: React.FC = () => {
                 </div>
             </div>
 
-            {/* Panic Button */}
+
             <div className="flex justify-end pt-8 border-t border-slate-200">
                 <button
                     onClick={() => setIsResetModalOpen(true)}

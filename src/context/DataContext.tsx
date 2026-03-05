@@ -58,7 +58,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     api.getClasses()
                 ]);
 
-                // The API requires classId or date. We fetch attendance for all classes.
+                // traemos las asistencias de todos los salones de una
                 const attendancePromises = classesRaw.map((c: any) => api.getAttendance(c.id).catch(() => []));
                 const attendanceResults = await Promise.all(attendancePromises);
                 const allAttendanceRaw = attendanceResults.flat();
@@ -78,7 +78,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const studentsDict: Record<string, Student> = {};
                 const attendanceRecords: AttendanceRecord[] = [];
 
-                // Group all raw attendance rows by classId then date
+                // agrupamos todo por clase y fecha
                 const recordsByClassAndDate: Record<string, Record<string, any[]>> = {};
                 allAttendanceRaw.forEach((row: any) => {
                     if (!recordsByClassAndDate[row.class_id]) recordsByClassAndDate[row.class_id] = {};
@@ -86,7 +86,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     recordsByClassAndDate[row.class_id][row.date].push({ studentId: row.student_id, status: row.status });
                 });
 
-                // Generate unified attendanceRecords
+                // armamos el array final con las asistencias
                 Object.entries(recordsByClassAndDate).forEach(([cId, dates]) => {
                     Object.entries(dates).forEach(([date, recs]) => {
                         attendanceRecords.push({
@@ -100,7 +100,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 await Promise.all(loadedClasses.map(async (cls: ClassGroup) => {
                     try {
-                        const studentsListRaw = await api.getStudents(cls.id); // Students can stay, though they could be optimized too if needed.
+                        const studentsListRaw = await api.getStudents(cls.id); // pillamos los alumnos (luego vemos si optimizamos esto)
 
                         studentsListRaw.forEach((st: any) => {
                             cls.studentIds.push(st.id);
@@ -118,7 +118,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                 }));
 
-                // Calculate stats
+                // sacamos las cuentas de las faltas
                 Object.values(studentsDict).forEach(st => {
                     const stats = calculateAttendanceStats(st.id, attendanceRecords);
                     st.attendanceHistory = stats;
@@ -174,7 +174,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const dataToUpdate: any = {};
             if (updatedClass.name) dataToUpdate.name = updatedClass.name;
             if (updatedClass.grado || updatedClass.seccion) {
-                // To safely update grade, we might need current class state.
+                // armamos el string del grado por si aca
                 const gradeStr = `${updatedClass.grado || ''}|${updatedClass.seccion || 'A'}`;
                 dataToUpdate.grade = gradeStr;
             }
@@ -226,7 +226,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const updateUser = useCallback(async (id: string, updatedUser: Partial<User>) => {
-        // Handled in AuthContext for current user, but if Director updates others:
+        // el dire cambia info de otros profes por acá
         try {
             if (updatedUser.name || updatedUser.role || updatedUser.password) {
                 await api.updateUser(id, updatedUser);

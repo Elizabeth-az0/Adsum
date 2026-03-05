@@ -21,7 +21,7 @@ const Attendance: React.FC = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Filter classes available to the user
+    // las clases de este profe (o todas si es dire)
     const myClasses = data.classes.filter(c =>
         user?.role === 'DIRECTOR' || c.professorId === user?.id
     );
@@ -32,7 +32,7 @@ const Attendance: React.FC = () => {
         }
     }, [classIdParam]);
 
-    // Initialize attendance state when class changes
+    // traemos los datos cuando se elige otra clase
     useEffect(() => {
         if (selectedClassId) {
             const cls = data.classes.find(c => c.id === selectedClassId);
@@ -112,7 +112,7 @@ const Attendance: React.FC = () => {
             setSuccess('Asistencia guardada correctamente.');
             setTimeout(() => {
                 setSuccess('');
-                setSelectedClassId(''); // Return to class list
+                setSelectedClassId(''); // lo devolvemos a la lista
             }, 2000);
         } catch (err: any) {
             setError(err.message || 'Hubo un error al guardar la asistencia.');
@@ -136,7 +136,7 @@ const Attendance: React.FC = () => {
             setIsDeleteModalOpen(false);
             setTimeout(() => {
                 setSuccess('');
-                setSelectedClassId(''); // Return to class list
+                setSelectedClassId(''); // de vuelta al inicio
             }, 2000);
         } catch (err: any) {
             setError(err.message || 'Hubo un error al eliminar el registro.');
@@ -147,7 +147,7 @@ const Attendance: React.FC = () => {
     const todayISO = getLocalISODate();
     const hasRecordToday = data.attendance.some(r => r.classId === selectedClassId && r.date === todayISO);
 
-    // If no class is selected, show the class selection grid
+    // si no hay clase elegida mostramos las tarjetas
     if (!selectedClassId || !selectedClass) {
         return (
             <div className="space-y-6">
@@ -263,7 +263,7 @@ const Attendance: React.FC = () => {
                 </div>
             )}
 
-            {/* Header */}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div className="flex items-center gap-4">
                     <button onClick={() => setSelectedClassId('')} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
@@ -316,7 +316,7 @@ const Attendance: React.FC = () => {
                 </div>
             </div>
 
-            {/* Controls */}
+
             <div className="flex flex-col md:flex-row justify-between gap-4">
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -350,7 +350,7 @@ const Attendance: React.FC = () => {
                 </div>
             </div>
 
-            {/* Student List */}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {students.map((student, idx) => (
                     <StudentCard

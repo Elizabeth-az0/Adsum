@@ -20,11 +20,11 @@ const Classes: React.FC = () => {
     const [newStudentLastName, setNewStudentLastName] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Class Form State for Director
+    // el dire maneja los salones acá
     const [newClass, setNewClass] = useState({ name: '', grado: '', seccion: '', professorId: '' });
     const [editingClassId, setEditingClassId] = useState<string | null>(null);
 
-    // Deletion Modal States
+    // para confirmar cuando se borra algo
     const [classToDelete, setClassToDelete] = useState<string | null>(null);
     const [studentToRemove, setStudentToRemove] = useState<string | null>(null);
 
@@ -149,7 +149,7 @@ const Classes: React.FC = () => {
 
             {activeTab === 'manage_classes' && isDirector && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Create/Edit Class */}
+
                     <div className="lg:col-span-1">
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 sticky top-8">
                             <div className="flex items-center justify-between mb-6">
@@ -224,7 +224,7 @@ const Classes: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Class List */}
+
                     <div className="lg:col-span-2 space-y-4">
                         {data.classes.map(c => {
                             const professor = data.users.find(u => u.id === c.professorId);
@@ -283,7 +283,7 @@ const Classes: React.FC = () => {
                     </div>
                     {selectedClassId ? (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Add Student Form */}
+
                             <div className="lg:col-span-1">
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 sticky top-8">
                                     <div className="flex items-center gap-3 mb-6">
@@ -327,7 +327,7 @@ const Classes: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Student List */}
+
                             <div className="lg:col-span-2">
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                                     <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -389,7 +389,7 @@ const Classes: React.FC = () => {
                     )}
                 </>
             )}
-            {/* Edit Class Modal */}
+
             {editingClassId && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden scale-in animate-in zoom-in-95 duration-200">

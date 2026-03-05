@@ -45,7 +45,7 @@ const Layout: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row" style={{ fontSize: `${getScale()}em` }}>
-            {/* Mobile Menu Overlay */}
+
             {isMobileMenuOpen && (
                 <div
                     className="fixed inset-0 bg-black/50 z-40 md:hidden"
@@ -53,7 +53,7 @@ const Layout: React.FC = () => {
                 />
             )}
 
-            {/* Sidebar */}
+
             <aside className={cn(
                 "fixed md:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out md:translate-x-0 flex flex-col",
                 isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
@@ -115,9 +115,9 @@ const Layout: React.FC = () => {
                 </div>
             </aside>
 
-            {/* Main Content */}
+
             <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
-                {/* Mobile Header */}
+
                 <header className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-30">
                     <div className="flex items-center gap-1">
                         <img src="/LogoAdsum1.svg" alt="Adsum Logo" className="h-9 w-auto translate-x-1" />

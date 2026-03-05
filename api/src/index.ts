@@ -291,6 +291,10 @@ app.post('/api/attendance', async (c) => {
         if (!cls || cls.professor_id !== user.id) return c.json({ error: 'Prohibido' }, 403)
     }
 
+    if (!records || records.length === 0) {
+        return c.json({ success: true, message: 'Sin estudiantes para registrar' })
+    }
+
     // To avoid duplicates, insert or replace using the UNIQUE constraint on (class_id, student_id, date)
     const stmts = records.map((r: any) => {
         return c.env.DB.prepare('INSERT OR REPLACE INTO attendance (id, student_id, class_id, date, status) VALUES (COALESCE((SELECT id FROM attendance WHERE class_id = ? AND student_id = ? AND date = ?), ?), ?, ?, ?, ?)')

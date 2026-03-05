@@ -7,6 +7,11 @@ import { cn } from '../lib/utils';
 import type { AttendanceRecord } from '../types';
 import ConfirmModal from '../components/ConfirmModal';
 
+const getLocalISODate = () => {
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+    return new Date(Date.now() - tzoffset).toISOString().split('T')[0];
+};
+
 const Attendance: React.FC = () => {
     const [searchParams] = useSearchParams();
     const classIdParam = searchParams.get('classId');
@@ -19,6 +24,7 @@ const Attendance: React.FC = () => {
     const [error, setError] = useState<string>('');
     const [success, setSuccess] = useState<string>('');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Filter classes available to the user
     const myClasses = data.classes.filter(c =>
@@ -36,7 +42,7 @@ const Attendance: React.FC = () => {
         if (selectedClassId) {
             const cls = data.classes.find(c => c.id === selectedClassId);
             if (cls) {
-                const todayISO = new Date().toISOString().split('T')[0];
+                const todayISO = getLocalISODate();
                 const existingRecord = data.attendance.find(r => r.classId === selectedClassId && r.date === todayISO);
 
                 if (existingRecord) {
@@ -78,13 +84,14 @@ const Attendance: React.FC = () => {
     };
 
     const markAllPresent = () => {
+        if (!selectedClass) return;
         const newState: Record<string, 'PRESENT' | 'ABSENT' | 'JUSTIFIED'> = {};
-        students.forEach(s => newState[s.id] = 'PRESENT');
+        selectedClass.studentIds.forEach(id => newState[id] = 'PRESENT');
         setAttendanceState(prev => ({ ...prev, ...newState }));
     };
 
     const handleSave = async () => {
-        if (!selectedClass) return;
+        if (!selectedClass || isSaving) return;
 
         const missing = selectedClass.studentIds.some(id => !attendanceState[id]);
         if (missing) {
@@ -93,9 +100,10 @@ const Attendance: React.FC = () => {
             return;
         }
 
+        setIsSaving(true);
         const record: AttendanceRecord = {
             id: Math.random().toString(36).substr(2, 9),
-            date: new Date().toISOString().split('T')[0],
+            date: getLocalISODate(),
             classId: selectedClass.id,
             records: Object.entries(attendanceState).map(([studentId, status]) => ({
                 studentId,
@@ -113,6 +121,8 @@ const Attendance: React.FC = () => {
             }, 2000);
         } catch (err: any) {
             setError(err.message || 'Hubo un error al guardar la asistencia.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -122,7 +132,7 @@ const Attendance: React.FC = () => {
 
     const confirmDelete = async () => {
         if (!selectedClass) return;
-        const todayISO = new Date().toISOString().split('T')[0];
+        const todayISO = getLocalISODate();
         try {
             await deleteAttendance(selectedClass.id, todayISO, user);
             setAttendanceState({});
@@ -139,7 +149,7 @@ const Attendance: React.FC = () => {
         }
     };
 
-    const todayISO = new Date().toISOString().split('T')[0];
+    const todayISO = getLocalISODate();
     const hasRecordToday = data.attendance.some(r => r.classId === selectedClassId && r.date === todayISO);
 
     // If no class is selected, show the class selection grid
@@ -298,10 +308,14 @@ const Attendance: React.FC = () => {
                         )}
                         <button
                             onClick={handleSave}
-                            className="flex-1 md:flex-none bg-primary-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 shadow-none"
+                            disabled={isSaving}
+                            className={cn(
+                                "flex-1 md:flex-none bg-primary-600 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-none",
+                                isSaving ? "opacity-50 cursor-not-allowed" : "hover:bg-primary-700"
+                            )}
                         >
                             <Save className="w-5 h-5" />
-                            {hasRecordToday ? 'Actualizar' : 'Guardar'}
+                            {isSaving ? 'Guardando...' : hasRecordToday ? 'Actualizar' : 'Guardar'}
                         </button>
                     </div>
                 </div>

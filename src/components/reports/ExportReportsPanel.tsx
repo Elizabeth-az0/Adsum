@@ -3,8 +3,8 @@ import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import ReportPreview from './ReportPreview';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 interface ReportData {
@@ -143,7 +143,7 @@ const ExportReportsPanel: React.FC = () => {
                 `${s.percent}%`
             ]);
 
-            autoTable(doc, {
+            (doc as any).autoTable({
                 startY: 60,
                 head: [['Estudiante', 'Presentes', 'Ausentes', 'Justificados', '% Asistencia']],
                 body: tableData,
@@ -158,7 +158,7 @@ const ExportReportsPanel: React.FC = () => {
                 a.status === 'PRESENT' ? 'Presente' : a.status === 'ABSENT' ? 'Ausente' : 'Justificado'
             ]);
 
-            autoTable(doc, {
+            (doc as any).autoTable({
                 startY: 60,
                 head: [['Fecha', 'Estudiante', 'Estado']],
                 body: tableData,
@@ -179,7 +179,7 @@ const ExportReportsPanel: React.FC = () => {
                 return row;
             });
 
-            autoTable(doc, {
+            (doc as any).autoTable({
                 startY: 60,
                 head: head,
                 body: body,

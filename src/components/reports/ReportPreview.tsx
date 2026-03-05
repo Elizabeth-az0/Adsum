@@ -118,13 +118,63 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, exportF
                             </tbody>
                         </table>
                     )}
-                    {/* (Other excel-style report types for history/calendar would go here if needed, 
-                        but focusing on summary for now as requested) */}
-                    {reportType !== 'summary' && (
-                        <div className="p-4 text-center text-slate-400 font-bold italic">
-                            Previsualización de Excel disponible para Resumen.
-                            El archivo descargado contendrá todos los datos.
-                        </div>
+                    {reportType === 'history' && (
+                        <table className="min-w-full border-r border-b border-slate-200 dark:border-slate-700">
+                            <thead>
+                                <tr className="bg-slate-100 dark:bg-slate-800">
+                                    <th className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-left font-black">Fecha</th>
+                                    <th className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-left font-black">Estudiante</th>
+                                    <th className="border-b border-slate-200 dark:border-slate-700 p-2 text-left font-black">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {detailedAttendance.map((a: any, idx: number) => (
+                                    <tr key={idx}>
+                                        <td className="border-r border-b border-slate-200 dark:border-slate-700 p-2 font-medium">
+                                            {a.date}
+                                        </td>
+                                        <td className="border-r border-b border-slate-200 dark:border-slate-700 p-2 font-medium capitalize">
+                                            {students.find((s: any) => s.studentId === a.student_id)?.studentName.toLowerCase() || 'Estudiante'}
+                                        </td>
+                                        <td className="border-b border-slate-200 dark:border-slate-700 p-2">
+                                            {a.status}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+
+                    {reportType === 'calendar' && (
+                        <table className="min-w-full border-r border-b border-slate-200 dark:border-slate-700">
+                            <thead>
+                                <tr className="bg-slate-100 dark:bg-slate-800">
+                                    <th className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-left font-black">Estudiante</th>
+                                    {activeDays.map(day => (
+                                        <th key={day} className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-center font-black">
+                                            Día {day}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {students.map((s: any) => (
+                                    <tr key={s.studentId}>
+                                        <td className="border-r border-b border-slate-200 dark:border-slate-700 p-2 font-medium capitalize">
+                                            {s.studentName.toLowerCase()}
+                                        </td>
+                                        {activeDays.map(day => {
+                                            const att = detailedAttendance.find((a: any) => a.student_id === s.studentId && getDay(a.date) === day);
+                                            return (
+                                                <td key={day} className="border-r border-b border-slate-200 dark:border-slate-700 p-2 text-center">
+                                                    {att ? att.status : '-'}
+                                                </td>
+                                            )
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     )}
                 </div>
             </div>

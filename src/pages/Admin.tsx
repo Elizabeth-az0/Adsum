@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus, Trash2, Shield, School, User, Pencil, X } from 'lucide-react';
+import { UserPlus, Trash2, Shield, User, Pencil, X } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 
 const Admin: React.FC = () => {
@@ -159,23 +159,23 @@ const Admin: React.FC = () => {
                 {/* User List */}
                 <div className="lg:col-span-2 space-y-4">
                     {data.users.filter(u => u.role === 'PROFESSOR').map((u, idx) => (
-                        <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both" style={{ animationDelay: `${idx * 50}ms` }}>
+                        <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both" style={{ animationDelay: `${idx * 50}ms` }}>
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-lg">
+                                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-lg shrink-0">
                                     {u.name[0]}
                                 </div>
-                                <div>
-                                    <p className="font-bold text-slate-900">{u.name}</p>
-                                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-bold text-slate-900 truncate">{u.name}</p>
+                                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500 mt-1">
                                         <User className="w-3 h-3" />
-                                        <span>{u.username}</span>
-                                        <span className="text-slate-300">•</span>
+                                        <span className="truncate max-w-[120px] sm:max-w-none">{u.username}</span>
+                                        <span className="text-slate-300 hidden sm:inline">•</span>
                                         <Shield className="w-3 h-3" />
                                         <span className="capitalize">{u.role.toLowerCase()}</span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 self-end sm:self-auto">
                                 <button
                                     onClick={() => handleEditUser(u)}
                                     className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"

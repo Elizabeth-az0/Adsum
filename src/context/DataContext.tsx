@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { AppData, ClassGroup, Student, AttendanceRecord, User } from '../types';
 import { useAuth } from './AuthContext';
+import { api } from '../services/api';
 
 interface DataContextType {
     data: AppData;
@@ -19,30 +20,12 @@ interface DataContextType {
     getClassStats: (classId: string) => { present: number; absent: number; justified: number; total: number };
 }
 
-const defaultData: AppData = {
-    users: [
-        {
-            id: 'director-1',
-            username: 'director',
-            name: 'Director',
-            password: 'admin',
-            role: 'DIRECTOR',
-            avatar: 'https://ui-avatars.com/api/?name=Director&background=random'
-        }
-    ],
-    classes: [],
-    students: {},
-    attendance: []
-};
+const defaultData: AppData = { users: [], classes: [], students: {}, attendance: [] };
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 const calculateAttendanceStats = (studentId: string, attendance: AttendanceRecord[]) => {
-    let present = 0;
-    let absent = 0;
-    let justified = 0;
-    let total = 0;
-
+    let present = 0, absent = 0, justified = 0, total = 0;
     attendance.forEach(record => {
         const studentRecord = record.records.find(r => r.studentId === studentId);
         if (studentRecord) {
@@ -52,177 +35,262 @@ const calculateAttendanceStats = (studentId: string, attendance: AttendanceRecor
             if (studentRecord.status === 'JUSTIFIED') justified++;
         }
     });
-
     return { present, absent, justified, total };
 };
 
-const isAtRisk = (stats: { present: number; total: number }) => {
-    if (stats.total === 0) return false;
-    const rate = stats.present / stats.total;
-    return rate < 0.75;
-};
+const isAtRisk = (stats: { absent: number }) => stats.absent >= 10;
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const [data, setDataState] = useState<AppData>(defaultData);
     const [isLoading, setIsLoading] = useState(true);
 
-    const saveData = useCallback((newData: AppData) => {
-        setDataState(newData);
-        localStorage.setItem('adsum_data', JSON.stringify(newData));
-    }, []);
-
     useEffect(() => {
-        const stored = localStorage.getItem('adsum_data');
-        if (stored) {
-            try {
-                setDataState(JSON.parse(stored));
-            } catch (e) {
-                console.error('Error parsing stored data', e);
+        let mounted = true;
+        const loadInitialData = async () => {
+            if (!user) {
+                if (mounted) setIsLoading(false);
+                return;
             }
-        }
-        setIsLoading(false);
-    }, []);
+            try {
+                const [usersRaw, classesRaw, allAttendanceRaw] = await Promise.all([
+                    user.role === 'DIRECTOR' ? api.getUsers() : Promise.resolve([]),
+                    api.getClasses(),
+                    api.getAttendance() // Fetch full relevant attendance history in 1 query!
+                ]);
+
+                const loadedClasses = classesRaw.map((c: any) => {
+                    const gradeParts = (c.grade || '').split('|');
+                    return {
+                        id: c.id,
+                        name: c.name,
+                        grado: gradeParts[0] || c.grade,
+                        seccion: gradeParts[1] || 'A',
+                        professorId: c.professor_id,
+                        studentIds: []
+                    };
+                });
+
+                const studentsDict: Record<string, Student> = {};
+                const attendanceRecords: AttendanceRecord[] = [];
+
+                // Group all raw attendance rows by classId then date
+                const recordsByClassAndDate: Record<string, Record<string, any[]>> = {};
+                allAttendanceRaw.forEach((row: any) => {
+                    if (!recordsByClassAndDate[row.class_id]) recordsByClassAndDate[row.class_id] = {};
+                    if (!recordsByClassAndDate[row.class_id][row.date]) recordsByClassAndDate[row.class_id][row.date] = [];
+                    recordsByClassAndDate[row.class_id][row.date].push({ studentId: row.student_id, status: row.status });
+                });
+
+                // Generate unified attendanceRecords
+                Object.entries(recordsByClassAndDate).forEach(([cId, dates]) => {
+                    Object.entries(dates).forEach(([date, recs]) => {
+                        attendanceRecords.push({
+                            id: crypto.randomUUID(),
+                            date,
+                            classId: cId,
+                            records: recs
+                        });
+                    });
+                });
+
+                await Promise.all(loadedClasses.map(async (cls: ClassGroup) => {
+                    try {
+                        const studentsListRaw = await api.getStudents(cls.id); // Students can stay, though they could be optimized too if needed.
+
+                        studentsListRaw.forEach((st: any) => {
+                            cls.studentIds.push(st.id);
+                            const nameParts = (st.name || '').split(' ');
+                            studentsDict[st.id] = {
+                                id: st.id,
+                                firstName: nameParts[0] || '',
+                                lastName: nameParts.slice(1).join(' '),
+                                attendanceHistory: { present: 0, absent: 0, justified: 0, total: 0 },
+                                risk: false
+                            };
+                        });
+                    } catch (err) {
+                        console.error('Error loading class data context', err);
+                    }
+                }));
+
+                // Calculate stats
+                Object.values(studentsDict).forEach(st => {
+                    const stats = calculateAttendanceStats(st.id, attendanceRecords);
+                    st.attendanceHistory = stats;
+                    st.risk = isAtRisk(stats);
+                });
+
+                if (mounted) {
+                    setDataState({ users: usersRaw, classes: loadedClasses, students: studentsDict, attendance: attendanceRecords });
+                }
+            } catch (err: any) {
+                console.error("Failed to load initial data", err);
+                if (err.message === 'UNAUTHORIZED') {
+                    resetData();
+                }
+            } finally {
+                if (mounted) setIsLoading(false);
+            }
+        };
+
+        setIsLoading(true);
+        loadInitialData();
+
+        return () => { mounted = false; };
+    }, [user]);
+
+    const saveData = useCallback((newData: AppData) => setDataState(newData), []);
 
     const resetData = useCallback(() => {
-        localStorage.removeItem('adsum_data');
         setDataState(defaultData);
         logout();
     }, [logout]);
 
-    const addClass = useCallback((newClass: Omit<ClassGroup, 'id' | 'studentIds'>) => {
-        setDataState((prev: AppData) => {
-            const cls = { ...newClass, id: Math.random().toString(36).substr(2, 9), studentIds: [] };
-            const next = { ...prev, classes: [...prev.classes, cls] };
-            localStorage.setItem('adsum_data', JSON.stringify(next));
-            return next;
-        });
+    const addClass = useCallback(async (newClass: Omit<ClassGroup, 'id' | 'studentIds'>) => {
+        try {
+            const gradeStr = `${newClass.grado}|${newClass.seccion}`;
+            const res = await api.createClass({ name: newClass.name, grade: gradeStr, professor_id: newClass.professorId });
+            setDataState(prev => {
+                const cls = { ...newClass, id: res.id, studentIds: [] };
+                return { ...prev, classes: [...prev.classes, cls] };
+            });
+        } catch (e) { alert('Error: ' + (e as Error).message); }
     }, []);
 
-    const deleteClass = useCallback((classId: string) => {
-        setDataState((prev: AppData) => {
-            const next = { ...prev, classes: prev.classes.filter(c => c.id !== classId) };
-            localStorage.setItem('adsum_data', JSON.stringify(next));
-            return next;
-        });
+    const deleteClass = useCallback(async (classId: string) => {
+        try {
+            await api.deleteClass(classId);
+            setDataState(prev => ({ ...prev, classes: prev.classes.filter(c => c.id !== classId) }));
+        } catch (e) { alert('Error: ' + (e as Error).message); }
     }, []);
 
-    const updateClass = useCallback((id: string, updatedClass: Partial<ClassGroup>) => {
-        setDataState((prev: AppData) => {
-            const next = {
+    const updateClass = useCallback(async (id: string, updatedClass: Partial<ClassGroup>) => {
+        try {
+            const dataToUpdate: any = {};
+            if (updatedClass.name) dataToUpdate.name = updatedClass.name;
+            if (updatedClass.grado || updatedClass.seccion) {
+                // To safely update grade, we might need current class state.
+                const gradeStr = `${updatedClass.grado || ''}|${updatedClass.seccion || 'A'}`;
+                dataToUpdate.grade = gradeStr;
+            }
+            if (updatedClass.professorId) dataToUpdate.professor_id = updatedClass.professorId;
+
+            await api.updateClass(id, dataToUpdate);
+            setDataState(prev => ({
                 ...prev,
                 classes: prev.classes.map(c => c.id === id ? { ...c, ...updatedClass } : c)
-            };
-            localStorage.setItem('adsum_data', JSON.stringify(next));
-            return next;
-        });
+            }));
+        } catch (e) { alert('Error: ' + (e as Error).message); }
     }, []);
 
-    const addStudentToClass = useCallback((classId: string, studentProps: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>) => {
-        setDataState((prev: AppData) => {
-            const studentId = Math.random().toString(36).substr(2, 9);
-            const newStudent: Student = {
-                ...studentProps,
-                id: studentId,
-                attendanceHistory: { present: 0, absent: 0, justified: 0, total: 0 },
-                risk: false
-            };
-
-            const next = {
-                ...prev,
-                students: { ...prev.students, [studentId]: newStudent },
-                classes: prev.classes.map(c => c.id === classId ? { ...c, studentIds: [...c.studentIds, studentId] } : c)
-            };
-            localStorage.setItem('adsum_data', JSON.stringify(next));
-            return next;
-        });
+    const addStudentToClass = useCallback(async (classId: string, studentProps: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>) => {
+        try {
+            const res = await api.createStudent({
+                name: `${studentProps.firstName} ${studentProps.lastName}`.trim(),
+                class_id: classId
+            });
+            setDataState(prev => {
+                const newStudent: Student = {
+                    ...studentProps,
+                    id: res.id,
+                    attendanceHistory: { present: 0, absent: 0, justified: 0, total: 0 },
+                    risk: false
+                };
+                return {
+                    ...prev,
+                    students: { ...prev.students, [res.id]: newStudent },
+                    classes: prev.classes.map(c => c.id === classId ? { ...c, studentIds: [...c.studentIds, res.id] } : c)
+                };
+            });
+        } catch (e) { alert('Error: ' + (e as Error).message); }
     }, []);
 
-    const removeStudentFromClass = useCallback((classId: string, studentId: string) => {
-        setDataState((prev: AppData) => {
-            const nextStudents = { ...prev.students };
-            delete nextStudents[studentId];
-
-            const next = {
-                ...prev,
-                students: nextStudents,
-                classes: prev.classes.map(c => c.id === classId ? { ...c, studentIds: c.studentIds.filter(id => id !== studentId) } : c)
-            };
-            localStorage.setItem('adsum_data', JSON.stringify(next));
-            return next;
-        });
+    const removeStudentFromClass = useCallback(async (classId: string, studentId: string) => {
+        try {
+            await api.deleteStudent(studentId);
+            setDataState(prev => {
+                const nextStudents = { ...prev.students };
+                delete nextStudents[studentId];
+                return {
+                    ...prev,
+                    students: nextStudents,
+                    classes: prev.classes.map(c => c.id === classId ? { ...c, studentIds: c.studentIds.filter(id => id !== studentId) } : c)
+                };
+            });
+        } catch (e) { alert('Error: ' + (e as Error).message); }
     }, []);
 
-    const updateUser = useCallback((id: string, updatedUser: Partial<User>) => {
-        setDataState((prev: AppData) => {
-            const next = {
+    const updateUser = useCallback(async (id: string, updatedUser: Partial<User>) => {
+        // Handled in AuthContext for current user, but if Director updates others:
+        try {
+            if (updatedUser.name || updatedUser.role || updatedUser.password) {
+                await api.updateUser(id, updatedUser);
+            }
+            setDataState(prev => ({
                 ...prev,
                 users: prev.users.map(u => u.id === id ? { ...u, ...updatedUser } : u)
-            };
-            localStorage.setItem('adsum_data', JSON.stringify(next));
-            return next;
-        });
+            }));
+        } catch (e) { alert('Error: ' + (e as Error).message); }
     }, []);
 
-    const saveAttendance = useCallback((record: AttendanceRecord) => {
-        setDataState((prev: AppData) => {
-            const filteredAttendance = prev.attendance.filter(a => !(a.classId === record.classId && a.date === record.date));
-            const newAttendance = [...filteredAttendance, record];
+    const saveAttendance = useCallback(async (record: AttendanceRecord) => {
+        try {
+            await api.saveAttendance({
+                class_id: record.classId,
+                date: record.date,
+                records: record.records.map(r => ({ student_id: r.studentId, status: r.status }))
+            });
 
-            const nextStudents = { ...prev.students };
-            const classObj = prev.classes.find(c => c.id === record.classId);
-            if (classObj) {
-                classObj.studentIds.forEach(studentId => {
-                    const stats = calculateAttendanceStats(studentId, newAttendance);
-                    const risk = isAtRisk(stats);
-                    if (nextStudents[studentId]) {
-                        nextStudents[studentId] = {
-                            ...nextStudents[studentId],
-                            attendanceHistory: stats,
-                            risk
-                        };
-                    }
-                });
-            }
+            setDataState(prev => {
+                const filteredAttendance = prev.attendance.filter(a => !(a.classId === record.classId && a.date === record.date));
+                const newAttendance = [...filteredAttendance, record];
 
-            const next = { ...prev, attendance: newAttendance, students: nextStudents };
-            localStorage.setItem('adsum_data', JSON.stringify(next));
-            return next;
-        });
+                const nextStudents = { ...prev.students };
+                const classObj = prev.classes.find(c => c.id === record.classId);
+                if (classObj) {
+                    classObj.studentIds.forEach(studentId => {
+                        const stats = calculateAttendanceStats(studentId, newAttendance);
+                        if (nextStudents[studentId]) {
+                            nextStudents[studentId] = {
+                                ...nextStudents[studentId],
+                                attendanceHistory: stats,
+                                risk: isAtRisk(stats)
+                            };
+                        }
+                    });
+                }
+                return { ...prev, attendance: newAttendance, students: nextStudents };
+            });
+        } catch (e) { alert('Error: ' + (e as Error).message); throw e; }
     }, []);
 
-    const deleteAttendance = useCallback((classId: string, date: string) => {
-        setDataState((prev: AppData) => {
-            const newAttendance = prev.attendance.filter(a => !(a.classId === classId && a.date === date));
-
-            const nextStudents = { ...prev.students };
-            const classObj = prev.classes.find(c => c.id === classId);
-            if (classObj) {
-                classObj.studentIds.forEach(studentId => {
-                    const stats = calculateAttendanceStats(studentId, newAttendance);
-                    const risk = isAtRisk(stats);
-                    if (nextStudents[studentId]) {
-                        nextStudents[studentId] = {
-                            ...nextStudents[studentId],
-                            attendanceHistory: stats,
-                            risk
-                        };
-                    }
-                });
-            }
-
-            const next = { ...prev, attendance: newAttendance, students: nextStudents };
-            localStorage.setItem('adsum_data', JSON.stringify(next));
-            return next;
-        });
+    const deleteAttendance = useCallback(async (classId: string, date: string) => {
+        try {
+            await api.deleteAttendance(classId, date);
+            setDataState(prev => {
+                const newAttendance = prev.attendance.filter(a => !(a.classId === classId && a.date === date));
+                const nextStudents = { ...prev.students };
+                const classObj = prev.classes.find(c => c.id === classId);
+                if (classObj) {
+                    classObj.studentIds.forEach(studentId => {
+                        const stats = calculateAttendanceStats(studentId, newAttendance);
+                        if (nextStudents[studentId]) {
+                            nextStudents[studentId] = {
+                                ...nextStudents[studentId],
+                                attendanceHistory: stats,
+                                risk: isAtRisk(stats)
+                            };
+                        }
+                    });
+                }
+                return { ...prev, attendance: newAttendance, students: nextStudents };
+            });
+        } catch (e) { alert('Error: ' + (e as Error).message); throw e; }
     }, []);
 
     const getClassStats = useCallback((classId: string) => {
-        let present = 0;
-        let absent = 0;
-        let justified = 0;
-        let total = 0;
-
+        let present = 0, absent = 0, justified = 0, total = 0;
         data.attendance.filter(a => a.classId === classId).forEach(record => {
             record.records.forEach(r => {
                 total++;
@@ -231,7 +299,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (r.status === 'JUSTIFIED') justified++;
             });
         });
-
         return { present, absent, justified, total };
     }, [data.attendance]);
 
@@ -249,8 +316,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useData = () => {
     const context = useContext(DataContext);
-    if (context === undefined) {
-        throw new Error('useData must be used within a DataProvider');
-    }
+    if (context === undefined) throw new Error('useData must be used within a DataProvider');
     return context;
 };

@@ -15,6 +15,15 @@ type UserPayload = {
 
 const app = new Hono<{ Bindings: Bindings, Variables: { user: UserPayload } }>()
 
+app.onError((err, c) => {
+    console.error('Unhandled Server Error:', err.message);
+    return c.json({ error: 'Error interno del servidor' }, 500);
+})
+
+app.notFound((c) => {
+    return c.json({ error: 'Ruta no encontrada' }, 404);
+})
+
 app.use(
     '/api/*',
     cors({
@@ -81,7 +90,7 @@ app.use('/api/*', async (c, next) => {
         c.set('user', payload as UserPayload)
         await next()
     } catch (e: any) {
-        return c.json({ error: 'Token inválido', details: e.message }, 401)
+        return c.json({ error: 'Token inválido' }, 401)
     }
 })
 
@@ -130,8 +139,18 @@ app.delete('/api/users/:id', async (c) => {
     const user = c.get('user')
     if (user.role !== 'DIRECTOR') return c.json({ error: 'Prohibido' }, 403)
     const id = c.req.param('id')
+
+    if (user.id === id) {
+        return c.json({ error: 'No puedes bloquearte o eliminarte a ti mismo.' }, 400)
+    }
+
+    const classesCount = await c.env.DB.prepare('SELECT count(*) as total FROM classes WHERE professor_id = ?').bind(id).first()
+    if (classesCount && (classesCount.total as number) > 0) {
+        return c.json({ error: 'No se puede eliminar un profesor con aulas asignadas.' }, 400)
+    }
+
     await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(id).run()
-    return c.json({ success: true })
+    return c.json({ success: true, message: 'Usuario eliminado.' })
 })
 
 // ----- CLASSES -----
@@ -172,15 +191,14 @@ app.put('/api/classes/:id', async (c) => {
 
 app.delete('/api/classes/:id', async (c) => {
     const user = c.get('user')
+    if (user.role !== 'DIRECTOR') return c.json({ error: 'Prohibido' }, 403)
+
     const id = c.req.param('id')
 
-    if (user.role === 'PROFESSOR') {
-        const cls = await c.env.DB.prepare('SELECT professor_id FROM classes WHERE id = ?').bind(id).first()
-        if (!cls || cls.professor_id !== user.id) return c.json({ error: 'Prohibido' }, 403)
-    }
-
+    await c.env.DB.prepare('DELETE FROM attendance WHERE class_id = ?').bind(id).run()
+    await c.env.DB.prepare('DELETE FROM students WHERE class_id = ?').bind(id).run()
     await c.env.DB.prepare('DELETE FROM classes WHERE id = ?').bind(id).run()
-    return c.json({ success: true })
+    return c.json({ success: true, message: 'Aula y datos asociados eliminados.' })
 })
 
 // ----- STUDENTS -----
@@ -224,25 +242,44 @@ app.delete('/api/students/:id', async (c) => {
         if (!cls || cls.professor_id !== user.id) return c.json({ error: 'Prohibido' }, 403)
     }
 
+    await c.env.DB.prepare('DELETE FROM attendance WHERE student_id = ?').bind(id).run()
     await c.env.DB.prepare('DELETE FROM students WHERE id = ?').bind(id).run()
-    return c.json({ success: true })
+    return c.json({ success: true, message: 'Estudiante y registros asociados eliminados.' })
 })
 
-// ----- ATTENDANCE -----
 app.get('/api/attendance', async (c) => {
     const classId = c.req.query('classId')
     const date = c.req.query('date')
     const user = c.get('user')
 
-    if (!classId || !date) return c.json({ error: 'Faltan parámetros classId o date' }, 400)
+    // Si hay classId, aplicamos validación original
+    if (classId) {
+        if (user.role === 'PROFESSOR') {
+            const cls = await c.env.DB.prepare('SELECT professor_id FROM classes WHERE id = ?').bind(classId).first()
+            if (!cls || cls.professor_id !== user.id) return c.json({ error: 'Prohibido' }, 403)
+        }
 
-    if (user.role === 'PROFESSOR') {
-        const cls = await c.env.DB.prepare('SELECT professor_id FROM classes WHERE id = ?').bind(classId).first()
-        if (!cls || cls.professor_id !== user.id) return c.json({ error: 'Prohibido' }, 403)
+        if (date) {
+            const { results } = await c.env.DB.prepare('SELECT * FROM attendance WHERE class_id = ? AND date = ?').bind(classId, date).all()
+            return c.json(results)
+        } else {
+            const { results } = await c.env.DB.prepare('SELECT * FROM attendance WHERE class_id = ?').bind(classId).all()
+            return c.json(results)
+        }
+    } else {
+        // Optimización masiva: retornar toda la asistencia relevante (sin N+1)
+        if (user.role === 'DIRECTOR') {
+            const { results } = await c.env.DB.prepare('SELECT * FROM attendance').all()
+            return c.json(results)
+        } else {
+            const { results } = await c.env.DB.prepare(`
+                SELECT a.* FROM attendance a
+                JOIN classes c ON a.class_id = c.id
+                WHERE c.professor_id = ?
+            `).bind(user.id).all()
+            return c.json(results)
+        }
     }
-
-    const { results } = await c.env.DB.prepare('SELECT * FROM attendance WHERE class_id = ? AND date = ?').bind(classId, date).all()
-    return c.json(results)
 })
 
 app.post('/api/attendance', async (c) => {
@@ -307,17 +344,18 @@ app.get('/api/reports', async (c) => {
   `
     const { results: agg } = await c.env.DB.prepare(q).bind(...bindParams).all()
 
-    // Alumnos en riesgo (asistencia < 75%)
     const riskQuery = `
     SELECT s.id, s.name, a.class_id, c.name as class_name,
            SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) as present,
+           SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) as absent,
            COUNT(*) as total
     FROM attendance a
     JOIN students s ON a.student_id = s.id
     JOIN classes c ON a.class_id = c.id
     WHERE a.date >= ? AND a.date <= ? ${classCondition}
     GROUP BY s.id
-    HAVING (CAST(SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*)) < 0.75
+    HAVING SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) >= 10
+    ORDER BY absent DESC
   `
 
     const { results: riskStudents } = await c.env.DB.prepare(riskQuery).bind(...bindParams).all()

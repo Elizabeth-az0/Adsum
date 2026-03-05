@@ -62,11 +62,11 @@ const Classes: React.FC = () => {
         }
     };
 
-    const handleAddClass = (e: React.FormEvent) => {
+    const handleAddClass = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             if (editingClassId) {
-                updateClass(editingClassId, {
+                await updateClass(editingClassId, {
                     name: newClass.name,
                     grado: newClass.grado,
                     seccion: newClass.seccion,
@@ -76,7 +76,7 @@ const Classes: React.FC = () => {
                 alert('Aula actualizada con éxito');
             } else {
                 if (newClass.professorId) {
-                    addClass({
+                    await addClass({
                         name: newClass.name,
                         grado: newClass.grado,
                         seccion: newClass.seccion,
@@ -473,10 +473,10 @@ const Classes: React.FC = () => {
                 isOpen={!!classToDelete}
                 title="Eliminar Aula"
                 message="¿Estás seguro de que deseas eliminar esta aula? Se quitará a todos los alumnos asignados. Esta acción no se puede deshacer."
-                onConfirm={() => {
+                onConfirm={async () => {
                     if (classToDelete) {
                         try {
-                            deleteClass(classToDelete, user);
+                            await deleteClass(classToDelete, user);
                             setClassToDelete(null);
                         } catch (e: any) { alert(e.message); }
                     }

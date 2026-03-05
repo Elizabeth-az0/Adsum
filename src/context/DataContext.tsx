@@ -15,8 +15,8 @@ interface DataContextType {
     addStudentToClass: (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => void;
     removeStudentFromClass: (classId: string, studentId: string, user: User | null) => void;
     updateUser: (id: string, updatedUser: Partial<User>) => void;
-    saveAttendance: (record: AttendanceRecord, user?: User | null) => void;
-    deleteAttendance: (classId: string, date: string, user?: User | null) => void;
+    saveAttendance: (record: AttendanceRecord, user?: User | null) => Promise<void>;
+    deleteAttendance: (classId: string, date: string, user?: User | null) => Promise<void>;
     getClassStats: (classId: string) => { present: number; absent: number; justified: number; total: number };
 }
 

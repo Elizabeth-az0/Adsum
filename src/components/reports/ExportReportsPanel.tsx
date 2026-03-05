@@ -54,6 +54,7 @@ const ExportReportsPanel: React.FC = () => {
     const [exportFormat, setExportFormat] = useState('pdf');
     const [reportData, setReportData] = useState<ReportData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     // Filter classes based on role
     const availableClasses = data.classes.filter(c =>
@@ -63,15 +64,24 @@ const ExportReportsPanel: React.FC = () => {
     const fetchReportData = useCallback(async () => {
         if (!selectedClassId) {
             setReportData(null);
+            setFetchError(null);
             return;
         }
 
         setIsLoading(true);
+        setFetchError(null);
         try {
             const res = await api.getAttendanceReport(selectedClassId, month, year, reportType);
-            setReportData(res);
-        } catch (error) {
+            if (res.students && res.students.length === 0) {
+                setFetchError('No se encontraron estudiantes en esta aula.');
+                setReportData(null);
+            } else {
+                setReportData(res);
+            }
+        } catch (error: any) {
             console.error('Error fetching report data:', error);
+            setFetchError(error.message || 'Error al conectar con el servidor');
+            setReportData(null);
         } finally {
             setIsLoading(false);
         }
@@ -83,11 +93,18 @@ const ExportReportsPanel: React.FC = () => {
 
     const handleExport = () => {
         if (!reportData) return;
-
-        if (exportFormat === 'pdf') {
-            exportToPDF();
-        } else {
-            exportToExcel();
+        setIsLoading(true);
+        try {
+            if (exportFormat === 'pdf') {
+                exportToPDF();
+            } else {
+                exportToExcel();
+            }
+        } catch (err: any) {
+            console.error('Export error:', err);
+            setFetchError(`Error al exportar: ${err.message}`);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -96,6 +113,11 @@ const ExportReportsPanel: React.FC = () => {
         const doc = new jsPDF();
         const { classInfo, period, students, detailedAttendance } = reportData;
         const monthName = new Date(`${period.year}-${period.month}-01T12:00:00`).toLocaleString('es-ES', { month: 'long' });
+
+        // Totales para el reporte
+        const totalPresent = students.reduce((acc, s) => acc + s.present, 0);
+        const totalAbsent = students.reduce((acc, s) => acc + s.absent, 0);
+        const totalJustified = students.reduce((acc, s) => acc + s.justified, 0);
 
         // Header
         doc.setFontSize(22);
@@ -112,10 +134,10 @@ const ExportReportsPanel: React.FC = () => {
         doc.setTextColor(75, 85, 99); // Gray-600
         doc.text(`Aula: ${classInfo.name} (${classInfo.grade.replace('|', ' ')})`, 14, 40);
         doc.text(`Periodo: ${monthName} ${period.year}`, 14, 46);
-        doc.text(`Fecha de exportación: ${new Date().toLocaleDateString('es-ES')}`, 14, 52);
+        doc.text(`Presentes: ${totalPresent} | Ausentes: ${totalAbsent} | Justificados: ${totalJustified}`, 14, 52);
 
         if (reportType === 'summary') {
-            const tableData = students.map((s: any) => [
+            const tableData = students.map((s) => [
                 s.studentName,
                 s.present,
                 s.absent,
@@ -128,14 +150,13 @@ const ExportReportsPanel: React.FC = () => {
                 head: [['Estudiante', 'Presentes', 'Ausentes', 'Justificados', '% Asistencia']],
                 body: tableData,
                 theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
-                alternateRowStyles: { fillColor: [249, 250, 251] },
-                styles: { fontSize: 10, cellPadding: 3 },
+                headStyles: { fillColor: [79, 70, 229], textColor: 255 },
+                styles: { fontSize: 9 },
             });
         } else if (reportType === 'history') {
-            const tableData = detailedAttendance.map((a: any) => [
+            const tableData = detailedAttendance.map((a) => [
                 new Date(a.date + 'T12:00:00').toLocaleDateString('es-ES'),
-                students.find((s: any) => s.studentId === a.student_id)?.studentName || 'Estudiante',
+                students.find((s) => s.studentId === a.student_id)?.studentName || 'Estudiante',
                 a.status === 'PRESENT' ? 'Presente' : a.status === 'ABSENT' ? 'Ausente' : 'Justificado'
             ]);
 
@@ -145,16 +166,16 @@ const ExportReportsPanel: React.FC = () => {
                 body: tableData,
                 theme: 'grid',
                 headStyles: { fillColor: [79, 70, 229], textColor: 255 },
-                styles: { fontSize: 10 },
+                styles: { fontSize: 9 },
             });
         } else if (reportType === 'calendar') {
-            const activeDays = Array.from(new Set(detailedAttendance.map((a: { date: string }) => new Date(a.date).getUTCDate()))).sort((a: number, b: number) => a - b);
+            const activeDays = Array.from(new Set(detailedAttendance.map((a) => new Date(a.date + 'T12:00:00').getUTCDate()))).sort((a, b) => a - b);
 
             const head = [['Estudiante', ...activeDays.map(d => d.toString())]];
-            const body = students.map(s => {
+            const body = students.map((s) => {
                 const row: (string | number)[] = [s.studentName.split(' ')[0]];
                 activeDays.forEach(day => {
-                    const att = detailedAttendance.find(a => a.student_id === s.studentId && new Date(a.date).getUTCDate() === day);
+                    const att = detailedAttendance.find(a => a.student_id === s.studentId && new Date(a.date + 'T12:00:00').getUTCDate() === day);
                     row.push(att ? (att.status === 'PRESENT' ? 'P' : att.status === 'ABSENT' ? 'A' : 'J') : '-');
                 });
                 return row;
@@ -166,17 +187,17 @@ const ExportReportsPanel: React.FC = () => {
                 body: body,
                 theme: 'grid',
                 headStyles: { fillColor: [79, 70, 229], textColor: 255, fontSize: 8 },
-                styles: { fontSize: 7, cellPadding: 1, halign: 'center' },
+                styles: { fontSize: 7, halign: 'center' },
                 columnStyles: { 0: { halign: 'left', minCellWidth: 30 } }
             });
         }
 
-        doc.save(`Reporte_${classInfo.name.replace(/\s+/g, '_')}_${month}_${year}.pdf`);
+        doc.save(`Reporte_Adsum_${classInfo.name.replace(/\s+/g, '_')}_${period.month}_${period.year}.pdf`);
     };
 
     const exportToExcel = () => {
         if (!reportData) return;
-        const { classInfo, students, detailedAttendance } = reportData;
+        const { classInfo, period, students, detailedAttendance } = reportData;
         let dataToExport: any[] = [];
 
         if (reportType === 'summary') {
@@ -208,7 +229,7 @@ const ExportReportsPanel: React.FC = () => {
         const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
-        XLSX.writeFile(wb, `Reporte_${classInfo.name.replace(/\s+/g, '_')}_${month}_${year}.xlsx`);
+        XLSX.writeFile(wb, `Reporte_Adsum_${classInfo.name.replace(/\s+/g, '_')}_${period.month}_${period.year}.xlsx`);
     };
 
     return (
@@ -234,7 +255,7 @@ const ExportReportsPanel: React.FC = () => {
                             <select
                                 value={selectedClassId}
                                 onChange={(e) => setSelectedClassId(e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none appearance-none"
+                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none"
                             >
                                 <option value="">Seleccionar aula</option>
                                 {availableClasses.map(c => (
@@ -249,7 +270,7 @@ const ExportReportsPanel: React.FC = () => {
                             <select
                                 value={month}
                                 onChange={(e) => setMonth(e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none appearance-none"
+                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none"
                             >
                                 {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
                                     <option key={m} value={m}>
@@ -265,7 +286,7 @@ const ExportReportsPanel: React.FC = () => {
                             <select
                                 value={year}
                                 onChange={(e) => setYear(e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none appearance-none"
+                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none"
                             >
                                 <option value="2024">2024</option>
                                 <option value="2025">2025</option>
@@ -279,7 +300,7 @@ const ExportReportsPanel: React.FC = () => {
                             <select
                                 value={reportType}
                                 onChange={(e) => setReportType(e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none appearance-none"
+                                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer outline-none"
                             >
                                 <option value="summary">Resumen mensual</option>
                                 <option value="history">Historial detallado</option>
@@ -287,6 +308,15 @@ const ExportReportsPanel: React.FC = () => {
                             </select>
                         </div>
                     </div>
+
+                    {fetchError && (
+                        <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-100 dark:border-rose-900/40 rounded-xl flex items-center gap-3 text-rose-600 dark:text-rose-400 animate-in shake duration-300">
+                            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="font-bold">{fetchError}</span>
+                        </div>
+                    )}
 
                     <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border-2 border-indigo-100 dark:border-indigo-900/40">
                         <div className="flex-1 space-y-2 text-center md:text-left">

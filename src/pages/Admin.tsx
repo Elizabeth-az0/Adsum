@@ -5,7 +5,7 @@ import { UserPlus, Trash2, Shield, User, Pencil, X } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 
 const Admin: React.FC = () => {
-    const { data, saveData, resetData, updateUser } = useData();
+    const { data, resetData, updateUser, addUser, deleteUser } = useData();
     const { user } = useAuth();
 
     // info para crear o editar profes
@@ -17,29 +17,28 @@ const Admin: React.FC = () => {
         return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
     }
 
-    const handleAddUser = (e: React.FormEvent) => {
+    const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (editingUserId) {
-            updateUser(editingUserId, newUser);
-            setEditingUserId(null);
-            alert('Usuario actualizado con éxito');
-        } else {
-            const id = Math.random().toString(36).substr(2, 9);
-            const userToAdd = {
-                ...newUser,
-                id,
-                avatar: `https://ui-avatars.com/api/?name=${newUser.name}&background=random`
-            };
+        try {
+            if (editingUserId) {
+                await updateUser(editingUserId, newUser);
+                setEditingUserId(null);
+                alert('Usuario actualizado con éxito');
+            } else {
+                await addUser({
+                    name: newUser.name,
+                    username: newUser.username,
+                    password: newUser.password,
+                    role: newUser.role
+                });
+                alert('Usuario creado con éxito');
+            }
 
-            saveData({
-                ...data,
-                users: [...data.users, userToAdd]
-            });
-            alert('Usuario creado con éxito');
+            setNewUser({ name: '', username: '', password: '', role: 'PROFESSOR' });
+        } catch (error) {
+            // error ya manejado en context
         }
-
-        setNewUser({ name: '', username: '', password: '', role: 'PROFESSOR' });
     };
 
     const handleEditUser = (userToEdit: any) => {
@@ -74,13 +73,14 @@ const Admin: React.FC = () => {
         setUserToDelete(userId);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (userToDelete) {
-            saveData({
-                ...data,
-                users: data.users.filter(u => u.id !== userToDelete)
-            });
-            setUserToDelete(null);
+            try {
+                await deleteUser(userToDelete);
+                setUserToDelete(null);
+            } catch (error) {
+                // error manejado en context
+            }
         }
     };
 

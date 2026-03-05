@@ -76,21 +76,10 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, exportF
     if (exportFormat === 'excel') {
         return (
             <div className="bg-white dark:bg-gray-900 rounded-xl shadow-inner border-2 border-slate-200 dark:border-slate-800 p-8 overflow-hidden font-mono text-xs">
-                <div className="mb-4 flex items-center gap-4 text-slate-500 uppercase font-bold tracking-tighter">
+                <div className="mb-4 flex items-center gap-4 text-slate-500 uppercase font-bold tracking-tighter pb-4 border-b border-slate-200 dark:border-slate-800">
                     <div className="bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 rounded text-emerald-700">EXCEL PREVIEW</div>
                     <span>{classInfo.name}</span>
                     <span>{new Date(`${period.year}-${period.month}-01T12:00:00`).toLocaleString('es-ES', { month: 'short', year: 'numeric' })}</span>
-                </div>
-                {/* Excel Header Mockup */}
-                <div className="grid grid-cols-4 gap-[1px] bg-slate-200 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 mb-6">
-                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-slate-400">Total Alumnos</div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-emerald-600">{students.length}</div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-slate-400">Presentes</div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-emerald-600">{totalPresent}</div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-slate-400">Ausentes</div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-rose-600">{totalAbsent}</div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-slate-400">Justificados</div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-2 font-black text-amber-600">{totalJustified}</div>
                 </div>
 
                 <div className="overflow-x-auto border-t border-l border-slate-200 dark:border-slate-700">

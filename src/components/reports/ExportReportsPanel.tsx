@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import ReportPreview from './ReportPreview';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -112,79 +111,45 @@ const ExportReportsPanel: React.FC = () => {
         const { classInfo, period, students, detailedAttendance } = reportData;
         const monthName = new Date(`${period.year}-${period.month}-01T12:00:00`).toLocaleString('es-ES', { month: 'long' });
 
-        // Totales para el reporte
         const totalPresent = students.reduce((acc, s) => acc + s.present, 0);
         const totalAbsent = students.reduce((acc, s) => acc + s.absent, 0);
         const totalJustified = students.reduce((acc, s) => acc + s.justified, 0);
 
-        // Header Background
-        doc.setFillColor(66, 18, 132); // #421284
-        doc.roundedRect(14, 15, 182, 45, 3, 3, 'F');
+        doc.setFillColor(11, 83, 141);
+        doc.rect(14, 15, 182, 25, 'F');
 
-        doc.setFontSize(20);
+        doc.setFontSize(18);
         doc.setTextColor(255, 255, 255);
         doc.setFont("helvetica", "bold");
-        doc.text("Reporte de Asistencia", 20, 26);
+        doc.text("REPORTE FORMAL DE ASISTENCIA", 20, 25);
 
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         const TitleType = reportType === 'summary' ? `Resumen Mensual` :
             reportType === 'history' ? `Historial Detallado` : `Calendario de Asistencia`;
-        doc.text(`${TitleType} • ${classInfo.name} (${classInfo.grade.replace('|', ' ')})`, 20, 32);
+        doc.text(`${TitleType} - ${classInfo.name} (${classInfo.grade.replace('|', ' ')})`, 20, 32);
 
-        // Right side Period text
-        const periodLabel = "PERIODO";
         doc.setFontSize(8);
-        doc.text(periodLabel, 190, 24, { align: "right" });
+        doc.text("PERIODO", 190, 23, { align: "right" });
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        const periodStrStr = `${monthName.toUpperCase()} ${period.year}`;
+        doc.text(periodStrStr, 190, 31, { align: "right" });
+
+        doc.setTextColor(0, 0, 0);
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
-        const periodStrStr = `${monthName} de ${period.year}`;
-        doc.text(periodStrStr, 190, 30, { align: "right" });
+        doc.text("RESUMEN GENERAL", 14, 52);
 
-        // Draw Stats Cards
-        // Card 1: bg-white/10
-        doc.setFillColor(85, 41, 142); // Approximate blend
-        doc.setDrawColor(100, 50, 160);
-        doc.roundedRect(20, 39, 38, 14, 2, 2, 'DF');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(7);
-        doc.text("TOTAL ALUMNOS", 22, 44);
-        doc.setFontSize(12);
-        doc.text(`${students.length}`, 22, 50);
-
-        // Card 2: Emerald/20
-        doc.setFillColor(56, 51, 131);
-        doc.setDrawColor(50, 80, 150);
-        doc.roundedRect(62, 39, 38, 14, 2, 2, 'DF');
-        doc.setFontSize(7);
+        doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.text("PRESENTES", 64, 44);
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
-        doc.text(`${totalPresent}`, 64, 50);
+        doc.text(`Total Estudiantes: ${students.length}`, 14, 58);
+        doc.text(`Presentes Totales: ${totalPresent}`, 60, 58);
+        doc.text(`Ausentes Totales: ${totalAbsent}`, 110, 58);
+        doc.text(`Justificados Totales: ${totalJustified}`, 155, 58);
 
-        // Card 3: Rose/20
-        doc.setFillColor(101, 27, 124);
-        doc.setDrawColor(130, 40, 130);
-        doc.roundedRect(104, 39, 38, 14, 2, 2, 'DF');
-        doc.setFontSize(7);
-        doc.setFont("helvetica", "normal");
-        doc.text("AUSENTES", 106, 44);
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
-        doc.text(`${totalAbsent}`, 106, 50);
-
-        // Card 4: Amber/20
-        doc.setFillColor(101, 46, 108);
-        doc.setDrawColor(130, 60, 110);
-        doc.roundedRect(146, 39, 38, 14, 2, 2, 'DF');
-        doc.setFontSize(7);
-        doc.setFont("helvetica", "normal");
-        doc.text("JUSTIFICADOS", 148, 44);
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
-        doc.text(`${totalJustified}`, 148, 50);
-
+        doc.setDrawColor(200, 200, 200);
+        doc.line(14, 62, 196, 62);
 
         if (reportType === 'summary') {
             const tableData = students.map((s) => [
@@ -196,25 +161,12 @@ const ExportReportsPanel: React.FC = () => {
             ]);
 
             autoTable(doc, {
-                startY: 65,
+                startY: 68,
                 head: [['ESTUDIANTE', 'PRESENTES', 'AUSENTES', 'JUSTIFICADOS', '% ASISTENCIA']],
                 body: tableData,
                 theme: 'grid',
-                headStyles: { fillColor: [249, 250, 251], textColor: [107, 114, 128], fontStyle: 'bold', fontSize: 8 },
-                bodyStyles: { textColor: [17, 24, 39], fontSize: 9 },
-                didParseCell: function (data) {
-                    if (data.section === 'body') {
-                        if (data.column.index === 1) data.cell.styles.textColor = [16, 185, 129];
-                        if (data.column.index === 2) data.cell.styles.textColor = [244, 63, 94];
-                        if (data.column.index === 3) data.cell.styles.textColor = [245, 158, 11];
-                        if (data.column.index === 4) {
-                            const val = parseInt((data.cell.raw as string).replace('%', ''));
-                            if (val >= 90) data.cell.styles.textColor = [16, 185, 129];
-                            else if (val >= 75) data.cell.styles.textColor = [245, 158, 11];
-                            else data.cell.styles.textColor = [244, 63, 94];
-                        }
-                    }
-                }
+                headStyles: { fillColor: [11, 83, 141], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+                bodyStyles: { textColor: [0, 0, 0], fontSize: 9 }
             });
         } else if (reportType === 'history') {
             const tableData = detailedAttendance.map((a) => [
@@ -224,27 +176,19 @@ const ExportReportsPanel: React.FC = () => {
             ]);
 
             autoTable(doc, {
-                startY: 65,
+                startY: 68,
                 head: [['FECHA', 'ESTUDIANTE', 'ESTADO']],
                 body: tableData,
                 theme: 'grid',
-                headStyles: { fillColor: [249, 250, 251], textColor: [107, 114, 128], fontStyle: 'bold', fontSize: 8 },
-                bodyStyles: { textColor: [17, 24, 39], fontSize: 9 },
-                didParseCell: function (data) {
-                    if (data.section === 'body' && data.column.index === 2) {
-                        const val = data.cell.raw as string;
-                        if (val === 'Presente') data.cell.styles.textColor = [16, 185, 129];
-                        else if (val === 'Ausente') data.cell.styles.textColor = [244, 63, 94];
-                        else data.cell.styles.textColor = [245, 158, 11];
-                    }
-                }
+                headStyles: { fillColor: [11, 83, 141], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+                bodyStyles: { textColor: [0, 0, 0], fontSize: 9 }
             });
         } else if (reportType === 'calendar') {
             const activeDays = Array.from(new Set(detailedAttendance.map((a) => new Date(a.date + 'T12:00:00').getUTCDate()))).sort((a, b) => a - b);
 
-            const head = [['ESTUDIANTE', ...activeDays.map(d => `Día ${d}`)]];
+            const head = [['ESTUDIANTE', ...activeDays.map(d => `${d}`)]];
             const body = students.map((s) => {
-                const row: (string | number)[] = [s.studentName.split(' ')[0]];
+                const row = [s.studentName.split(' ')[0]];
                 activeDays.forEach(day => {
                     const att = detailedAttendance.find(a => a.student_id === s.studentId && new Date(a.date + 'T12:00:00').getUTCDate() === day);
                     row.push(att ? (att.status === 'PRESENT' ? 'P' : att.status === 'ABSENT' ? 'A' : 'J') : '-');
@@ -253,34 +197,26 @@ const ExportReportsPanel: React.FC = () => {
             });
 
             autoTable(doc, {
-                startY: 65,
+                startY: 68,
                 head: head,
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: [249, 250, 251], textColor: [107, 114, 128], fontStyle: 'bold', fontSize: 7 },
-                bodyStyles: { textColor: [17, 24, 39], fontSize: 8, halign: 'center' },
-                columnStyles: { 0: { halign: 'left', minCellWidth: 30 } },
-                didParseCell: function (data) {
-                    if (data.section === 'body' && data.column.index > 0) {
-                        const val = data.cell.raw as string;
-                        if (val === 'P') data.cell.styles.textColor = [16, 185, 129];
-                        else if (val === 'A') data.cell.styles.textColor = [244, 63, 94];
-                        else if (val === 'J') data.cell.styles.textColor = [245, 158, 11];
-                    }
-                }
+                headStyles: { fillColor: [11, 83, 141], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9, halign: 'center' },
+                bodyStyles: { textColor: [0, 0, 0], fontSize: 8, halign: 'center' },
+                columnStyles: { 0: { halign: 'left', minCellWidth: 30 } }
             });
         }
 
-        doc.save(`Reporte_Adsum_${classInfo.name.replace(/\s+/g, '_')}_${period.month}_${period.year}.pdf`);
+        doc.save(`Reporte_Asistencia_${classInfo.name.replace(/\s+/g, '_')}_${period.month}_${period.year}.pdf`);
     };
 
     const exportToExcel = () => {
         if (!reportData) return;
         const { classInfo, period, students, detailedAttendance } = reportData;
-        let dataToExport: any[] = [];
+        let dataToExport = [];
 
         if (reportType === 'summary') {
-            dataToExport = students.map((s: any) => ({
+            dataToExport = students.map((s) => ({
                 'Estudiante': s.studentName,
                 'Presentes': s.present,
                 'Ausentes': s.absent,
@@ -288,10 +224,10 @@ const ExportReportsPanel: React.FC = () => {
                 '% Asistencia': s.percent
             }));
         } else if (reportType === 'history') {
-            dataToExport = detailedAttendance.map((a: any) => ({
+            dataToExport = detailedAttendance.map((a) => ({
                 'Fecha': a.date,
-                'Estudiante': students.find((s: any) => s.studentId === a.student_id)?.studentName || 'Estudiante',
-                'Estado': a.status
+                'Estudiante': students.find((s) => s.studentId === a.student_id)?.studentName || 'Estudiante',
+                'Estado': a.status === 'PRESENT' ? 'Presente' : a.status === 'ABSENT' ? 'Ausente' : 'Justificado'
             }));
         } else {
             const activeDays = Array.from(new Set(detailedAttendance.map(a => new Date(a.date).getUTCDate()))).sort((a, b) => a - b);
@@ -299,16 +235,30 @@ const ExportReportsPanel: React.FC = () => {
                 const row: Record<string, string | number> = { 'Estudiante': s.studentName };
                 activeDays.forEach(day => {
                     const att = detailedAttendance.find(a => a.student_id === s.studentId && new Date(a.date).getUTCDate() === day);
-                    row[`Día ${day}`] = att ? att.status : '-';
+                    row[`Día ${day}`] = att ? (att.status === 'PRESENT' ? 'P' : att.status === 'ABSENT' ? 'A' : 'J') : '-';
                 });
                 return row;
             });
         }
 
-        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const ws = XLSX.utils.json_to_sheet([]);
+        const monthName = new Date(`${period.year}-${period.month}-01T12:00:00`).toLocaleString('es-ES', { month: 'long' });
+
+        const titleRow = [['REPORTE FORMAL DE ASISTENCIA']];
+        const infoRow = [[`Aula: ${classInfo.name} (${classInfo.grade.replace('|', ' ')})`]];
+        const periodRow = [[`Periodo: ${monthName.toUpperCase()} ${period.year}`]];
+        const typeRow = [[`Tipo de reporte: ${reportType === 'summary' ? 'Resumen Mensual' : reportType === 'history' ? 'Historial Detallado' : 'Calendario de Asistencia'}`]];
+
+        XLSX.utils.sheet_add_aoa(ws, titleRow, { origin: 'A1' });
+        XLSX.utils.sheet_add_aoa(ws, infoRow, { origin: 'A2' });
+        XLSX.utils.sheet_add_aoa(ws, periodRow, { origin: 'A3' });
+        XLSX.utils.sheet_add_aoa(ws, typeRow, { origin: 'A4' });
+
+        XLSX.utils.sheet_add_json(ws, dataToExport, { origin: 'A6' });
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
-        XLSX.writeFile(wb, `Reporte_Adsum_${classInfo.name.replace(/\s+/g, '_')}_${period.month}_${period.year}.xlsx`);
+        XLSX.writeFile(wb, `Reporte_Asistencia_${classInfo.name.replace(/\s+/g, '_')}_${period.month}_${period.year}.xlsx`);
     };
 
     return (
@@ -443,13 +393,11 @@ const ExportReportsPanel: React.FC = () => {
                 </div>
             </div>
 
-            <div className="space-y-4">
-                <div className="flex items-center justify-between px-2">
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">Vista Previa</h3>
-                    {isLoading && <span className="text-indigo-600 dark:text-indigo-400 font-bold animate-pulse">Sincronizando...</span>}
+            {isLoading && (
+                <div className="flex items-center justify-center p-4">
+                    <span className="text-indigo-600 dark:text-indigo-400 font-bold animate-pulse">Generando reporte...</span>
                 </div>
-                <ReportPreview data={reportData} reportType={reportType} exportFormat={exportFormat} isLoading={isLoading} />
-            </div>
+            )}
         </div>
     );
 };

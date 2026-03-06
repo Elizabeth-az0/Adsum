@@ -213,7 +213,7 @@ const ExportReportsPanel: React.FC = () => {
     const exportToExcel = () => {
         if (!reportData) return;
         const { classInfo, period, students, detailedAttendance } = reportData;
-        let dataToExport = [];
+        let dataToExport: any[] = [];
 
         if (reportType === 'summary') {
             dataToExport = students.map((s) => ({
@@ -241,21 +241,7 @@ const ExportReportsPanel: React.FC = () => {
             });
         }
 
-        const ws = XLSX.utils.json_to_sheet([]);
-        const monthName = new Date(`${period.year}-${period.month}-01T12:00:00`).toLocaleString('es-ES', { month: 'long' });
-
-        const titleRow = [['REPORTE FORMAL DE ASISTENCIA']];
-        const infoRow = [[`Aula: ${classInfo.name} (${classInfo.grade.replace('|', ' ')})`]];
-        const periodRow = [[`Periodo: ${monthName.toUpperCase()} ${period.year}`]];
-        const typeRow = [[`Tipo de reporte: ${reportType === 'summary' ? 'Resumen Mensual' : reportType === 'history' ? 'Historial Detallado' : 'Calendario de Asistencia'}`]];
-
-        XLSX.utils.sheet_add_aoa(ws, titleRow, { origin: 'A1' });
-        XLSX.utils.sheet_add_aoa(ws, infoRow, { origin: 'A2' });
-        XLSX.utils.sheet_add_aoa(ws, periodRow, { origin: 'A3' });
-        XLSX.utils.sheet_add_aoa(ws, typeRow, { origin: 'A4' });
-
-        XLSX.utils.sheet_add_json(ws, dataToExport, { origin: 'A6' });
-
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
         XLSX.writeFile(wb, `Reporte_Asistencia_${classInfo.name.replace(/\s+/g, '_')}_${period.month}_${period.year}.xlsx`);

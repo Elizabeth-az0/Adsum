@@ -49,6 +49,13 @@ const guidesList = [
         icon: FileText
     },
     {
+        id: 'exportar',
+        title: 'Exportar Configuración',
+        description: 'Sección para realizar copias de seguridad y exportar los datos del sistema.',
+        image: '/guias/exportar conf.png',
+        icon: Settings
+    },
+    {
         id: 'ajustes',
         title: 'Ajustes',
         description: 'Configuración personal de la cuenta y tamaño de las fuentes.',

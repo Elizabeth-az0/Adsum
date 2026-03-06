@@ -14,8 +14,8 @@ interface DataContextType {
     updateClass: (id: string, updatedClass: Partial<ClassGroup>, user: User | null) => Promise<void>;
     addStudentToClass: (classId: string, student: Omit<Student, 'id' | 'attendanceHistory' | 'risk'>, user: User | null) => void;
     removeStudentFromClass: (classId: string, studentId: string, user: User | null) => void;
-    updateUser: (id: string, updatedUser: Partial<User>) => void;
-    addUser: (newUser: Omit<User, 'id' | 'avatar' | 'classes'>) => Promise<void>;
+    updateUser: (id: string, updatedUser: Partial<User> & { password?: string }) => Promise<void>;
+    addUser: (newUser: Omit<User, 'id' | 'avatar' | 'classes'> & { password?: string }) => Promise<void>;
     deleteUser: (id: string) => Promise<void>;
     saveAttendance: (record: AttendanceRecord, user?: User | null) => Promise<void>;
     deleteAttendance: (classId: string, date: string, user?: User | null) => Promise<void>;
@@ -48,24 +48,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        const controller = new AbortController();
+        const signal = controller.signal;
         let mounted = true;
+
         const loadInitialData = async () => {
             if (!user) {
                 if (mounted) setIsLoading(false);
                 return;
             }
             try {
-                const [usersRaw, classesRaw] = await Promise.all([
-                    user.role === 'DIRECTOR' ? api.getUsers() : Promise.resolve([]),
-                    api.getClasses()
-                ]);
+                const initData = await api.getInitData(signal);
 
-                // traemos las asistencias de todos los salones de una
-                const attendancePromises = classesRaw.map((c: any) => api.getAttendance(c.id).catch(() => []));
-                const attendanceResults = await Promise.all(attendancePromises);
-                const allAttendanceRaw = attendanceResults.flat();
+                const usersRaw = initData.users || [];
+                const classesRaw = initData.classes || [];
+                const studentsRaw = initData.students || [];
+                const attendanceRaw = initData.attendance || [];
 
-                const loadedClasses = classesRaw.map((c: any) => {
+                const loadedClasses: ClassGroup[] = classesRaw.map((c: any) => {
                     const gradeParts = (c.grade || '').split('|');
                     return {
                         id: c.id,
@@ -82,7 +82,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 // agrupamos todo por clase y fecha
                 const recordsByClassAndDate: Record<string, Record<string, any[]>> = {};
-                allAttendanceRaw.forEach((row: any) => {
+                attendanceRaw.forEach((row: any) => {
                     if (!recordsByClassAndDate[row.class_id]) recordsByClassAndDate[row.class_id] = {};
                     if (!recordsByClassAndDate[row.class_id][row.date]) recordsByClassAndDate[row.class_id][row.date] = [];
                     recordsByClassAndDate[row.class_id][row.date].push({ studentId: row.student_id, status: row.status });
@@ -100,25 +100,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     });
                 });
 
-                await Promise.all(loadedClasses.map(async (cls: ClassGroup) => {
-                    try {
-                        const studentsListRaw = await api.getStudents(cls.id); // pillamos los alumnos (luego vemos si optimizamos esto)
-
-                        studentsListRaw.forEach((st: any) => {
-                            cls.studentIds.push(st.id);
-                            const nameParts = (st.name || '').split(' ');
-                            studentsDict[st.id] = {
-                                id: st.id,
-                                firstName: nameParts[0] || '',
-                                lastName: nameParts.slice(1).join(' '),
-                                attendanceHistory: { present: 0, absent: 0, justified: 0, total: 0 },
-                                risk: false
-                            };
-                        });
-                    } catch (err) {
-                        console.error('Error loading class data context', err);
+                // asosiamos estudiantes a clases global
+                studentsRaw.forEach((st: any) => {
+                    const cls = loadedClasses.find(c => c.id === st.class_id);
+                    if (cls) {
+                        cls.studentIds.push(st.id);
                     }
-                }));
+                    const nameParts = (st.name || '').split(' ');
+                    studentsDict[st.id] = {
+                        id: st.id,
+                        firstName: nameParts[0] || '',
+                        lastName: nameParts.slice(1).join(' '),
+                        attendanceHistory: { present: 0, absent: 0, justified: 0, total: 0 },
+                        risk: false
+                    };
+                });
 
                 // sacamos las cuentas de las faltas
                 Object.values(studentsDict).forEach(st => {
@@ -131,8 +127,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setDataState({ users: usersRaw, classes: loadedClasses, students: studentsDict, attendance: attendanceRecords });
                 }
             } catch (err: any) {
+                if (err.name === 'AbortError') return;
                 console.error("Failed to load initial data", err);
-                if (err.message === 'UNAUTHORIZED') {
+                if (err.message === 'UNAUTHORIZED' && mounted) {
                     resetData();
                 }
             } finally {
@@ -143,7 +140,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(true);
         loadInitialData();
 
-        return () => { mounted = false; };
+        return () => {
+            mounted = false;
+            controller.abort();
+        };
     }, [user]);
 
     const saveData = useCallback((newData: AppData) => setDataState(newData), []);
@@ -164,7 +164,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const deleteClass = useCallback(async (classId: string) => {
         await api.deleteClass(classId);
-        setDataState(prev => ({ ...prev, classes: prev.classes.filter(c => c.id !== classId) }));
+        setDataState(prev => {
+            const nextStudents = { ...prev.students };
+            const classToDelete = prev.classes.find(c => c.id === classId);
+            if (classToDelete) {
+                classToDelete.studentIds.forEach(id => delete nextStudents[id]);
+            }
+            return {
+                ...prev,
+                classes: prev.classes.filter(c => c.id !== classId),
+                students: nextStudents,
+                attendance: prev.attendance.filter(a => a.classId !== classId)
+            };
+        });
     }, []);
 
     const updateClass = useCallback(async (id: string, updatedClass: Partial<ClassGroup>) => {
@@ -203,7 +215,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     classes: prev.classes.map(c => c.id === classId ? { ...c, studentIds: [...c.studentIds, res.id] } : c)
                 };
             });
-        } catch (e) { alert('Error: ' + (e as Error).message); }
+        } catch (e) { throw e; }
     }, []);
 
     const removeStudentFromClass = useCallback(async (classId: string, studentId: string) => {
@@ -212,36 +224,48 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setDataState(prev => {
                 const nextStudents = { ...prev.students };
                 delete nextStudents[studentId];
+
+                // Limpiamos de la asistencia también para no ver fantasmas en los reportes
+                const nextAttendance = prev.attendance.map(a => ({
+                    ...a,
+                    records: a.records.filter(r => r.studentId !== studentId)
+                }));
+
                 return {
                     ...prev,
                     students: nextStudents,
-                    classes: prev.classes.map(c => c.id === classId ? { ...c, studentIds: c.studentIds.filter(id => id !== studentId) } : c)
+                    classes: prev.classes.map(c => c.id === classId ? { ...c, studentIds: c.studentIds.filter(id => id !== studentId) } : c),
+                    attendance: nextAttendance
                 };
             });
-        } catch (e) { alert('Error: ' + (e as Error).message); }
+        } catch (e) { throw e; }
     }, []);
 
-    const updateUser = useCallback(async (id: string, updatedUser: Partial<User>) => {
+    const updateUser = useCallback(async (id: string, updatedUser: Partial<User> & { password?: string }) => {
         // el dire cambia info de otros profes por acá
         try {
             if (updatedUser.name || updatedUser.role || updatedUser.password) {
                 await api.updateUser(id, updatedUser);
             }
-            setDataState(prev => ({
-                ...prev,
-                users: prev.users.map(u => u.id === id ? { ...u, ...updatedUser } : u)
-            }));
-        } catch (e) { alert('Error: ' + (e as Error).message); throw e; }
+            setDataState(prev => {
+                const updatedProps = { ...updatedUser };
+                delete updatedProps.password; // Don't save password in local state
+                return {
+                    ...prev,
+                    users: prev.users.map(u => u.id === id ? { ...u, ...updatedProps } : u)
+                };
+            });
+        } catch (e) { throw e; }
     }, []);
 
-    const addUser = useCallback(async (newUser: Omit<User, 'id' | 'avatar' | 'classes'>) => {
+    const addUser = useCallback(async (newUser: Omit<User, 'id' | 'avatar' | 'classes'> & { password?: string }) => {
         try {
             const res = await api.createUser(newUser);
             setDataState(prev => ({
                 ...prev,
                 users: [...prev.users, res]
             }));
-        } catch (e) { alert('Error: ' + (e as Error).message); throw e; }
+        } catch (e) { throw e; }
     }, []);
 
     const deleteUser = useCallback(async (id: string) => {
@@ -251,16 +275,96 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ...prev,
                 users: prev.users.filter(u => u.id !== id)
             }));
-        } catch (e) { alert('Error: ' + (e as Error).message); throw e; }
+        } catch (e) { throw e; }
     }, []);
 
     const saveAttendance = useCallback(async (record: AttendanceRecord) => {
         try {
-            await api.saveAttendance({
-                class_id: record.classId,
-                date: record.date,
-                records: record.records.map(r => ({ student_id: r.studentId, status: r.status }))
-            });
+            if (!navigator.onLine) {
+                const { saveToOfflineQueue } = await import('../lib/offlineQueue');
+                await saveToOfflineQueue({
+                    id: crypto.randomUUID(),
+                    classId: record.classId,
+                    date: record.date,
+                    records: record.records.map(r => ({ studentId: r.studentId, status: r.status as "PRESENT" | "ABSENT" | "JUSTIFIED" })),
+                    timestamp: Date.now()
+                });
+
+                window.dispatchEvent(new Event('sync-offline-triggered'));
+
+                setDataState(prev => {
+                    const filteredAttendance = prev.attendance.filter(a => !(a.classId === record.classId && a.date === record.date));
+                    const newAttendance = [...filteredAttendance, record];
+
+                    const nextStudents = { ...prev.students };
+                    const classObj = prev.classes.find(c => c.id === record.classId);
+                    if (classObj) {
+                        classObj.studentIds.forEach(studentId => {
+                            const stats = calculateAttendanceStats(studentId, newAttendance);
+                            if (nextStudents[studentId]) {
+                                nextStudents[studentId] = {
+                                    ...nextStudents[studentId],
+                                    attendanceHistory: stats,
+                                    risk: isAtRisk(stats)
+                                };
+                            }
+                        });
+                    }
+                    return { ...prev, attendance: newAttendance, students: nextStudents };
+                });
+
+                throw new Error('OFFLINE_SAVED');
+            }
+
+            try {
+                await api.saveAttendance({
+                    class_id: record.classId,
+                    date: record.date,
+                    records: record.records.map(r => ({ student_id: r.studentId, status: r.status }))
+                });
+            } catch (apiError: any) {
+                // If it's a network error or explicitly offline, fallback to queue
+                if (!navigator.onLine || apiError.message === 'Failed to fetch' || apiError.name === 'TypeError') {
+                    const { saveToOfflineQueue } = await import('../lib/offlineQueue');
+                    await saveToOfflineQueue({
+                        id: crypto.randomUUID(),
+                        classId: record.classId,
+                        date: record.date,
+                        records: record.records.map(r => ({ studentId: r.studentId, status: r.status as "PRESENT" | "ABSENT" | "JUSTIFIED" })),
+                        timestamp: Date.now()
+                    });
+
+                    window.dispatchEvent(new Event('sync-offline-triggered'));
+
+                    // Update state locally since we saved to the queue 
+                    setDataState(prev => {
+                        const filteredAttendance = prev.attendance.filter(a => !(a.classId === record.classId && a.date === record.date));
+                        const newAttendance = [...filteredAttendance, record];
+
+                        const nextStudents = { ...prev.students };
+                        const classObj = prev.classes.find(c => c.id === record.classId);
+                        if (classObj) {
+                            classObj.studentIds.forEach(studentId => {
+                                const stats = calculateAttendanceStats(studentId, newAttendance);
+                                if (nextStudents[studentId]) {
+                                    nextStudents[studentId] = {
+                                        ...nextStudents[studentId],
+                                        attendanceHistory: stats,
+                                        risk: isAtRisk(stats)
+                                    };
+                                }
+                            });
+                        }
+                        return { ...prev, attendance: newAttendance, students: nextStudents };
+                    });
+
+                    // Throw specific error for UI to show nice offline message
+                    const offlineError = new Error('OFFLINE_SAVED');
+                    offlineError.name = 'OFFLINE_SAVED';
+                    throw offlineError;
+                }
+                throw apiError; // It's a real API logic error, bubble up
+            }
 
             setDataState(prev => {
                 const filteredAttendance = prev.attendance.filter(a => !(a.classId === record.classId && a.date === record.date));
@@ -282,7 +386,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
                 return { ...prev, attendance: newAttendance, students: nextStudents };
             });
-        } catch (e) { alert('Error: ' + (e as Error).message); throw e; }
+        } catch (e) { throw e; }
     }, []);
 
     const deleteAttendance = useCallback(async (classId: string, date: string) => {
@@ -306,7 +410,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
                 return { ...prev, attendance: newAttendance, students: nextStudents };
             });
-        } catch (e) { alert('Error: ' + (e as Error).message); throw e; }
+        } catch (e) { throw e; }
     }, []);
 
     const getClassStats = useCallback((classId: string) => {

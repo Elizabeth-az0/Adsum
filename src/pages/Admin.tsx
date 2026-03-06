@@ -13,18 +13,25 @@ const Admin: React.FC = () => {
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
+    const [error, setError] = useState<string>('');
+    const [success, setSuccess] = useState<string>('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     if (user?.role !== 'DIRECTOR') {
         return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
     }
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+        setSuccess('');
+        setIsSubmitting(true);
 
         try {
             if (editingUserId) {
                 await updateUser(editingUserId, newUser);
                 setEditingUserId(null);
-                alert('Usuario actualizado con éxito');
+                setSuccess('Usuario actualizado con éxito');
             } else {
                 await addUser({
                     name: newUser.name,
@@ -32,12 +39,14 @@ const Admin: React.FC = () => {
                     password: newUser.password,
                     role: newUser.role
                 });
-                alert('Usuario creado con éxito');
+                setSuccess('Usuario creado con éxito');
             }
 
             setNewUser({ name: '', username: '', password: '', role: 'PROFESSOR' });
-        } catch (error) {
-            // error ya manejado en context
+        } catch (err: any) {
+            setError(err.message || 'Error al guardar el usuario');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -66,7 +75,7 @@ const Admin: React.FC = () => {
         }
 
         if (userObj.username === 'director') {
-            alert('No puedes eliminar al director principal del sistema.');
+            setError('No puedes eliminar al director principal del sistema.');
             return;
         }
 
@@ -75,11 +84,14 @@ const Admin: React.FC = () => {
 
     const confirmDelete = async () => {
         if (userToDelete) {
+            setError('');
+            setSuccess('');
             try {
                 await deleteUser(userToDelete);
                 setUserToDelete(null);
-            } catch (error) {
-                // error manejado en context
+                setSuccess('Usuario eliminado con éxito');
+            } catch (err: any) {
+                setError(err.message || 'Error al eliminar usuario');
             }
         }
     };
@@ -99,6 +111,17 @@ const Admin: React.FC = () => {
                     Restablecer Datos
                 </button>
             </div>
+
+            {error && (
+                <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200">
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div className="bg-green-50 text-green-700 p-4 rounded-xl border border-green-200">
+                    {success}
+                </div>
+            )}
 
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6">
@@ -147,10 +170,11 @@ const Admin: React.FC = () => {
                             </div>
                             <button
                                 type="submit"
-                                className="w-full bg-slate-900 text-white py-3 rounded-xl font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                                disabled={isSubmitting}
+                                className={`w-full text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'}`}
                             >
                                 <UserPlus className="w-5 h-5" />
-                                Crear Profesor
+                                {isSubmitting ? 'Guardando...' : 'Crear Profesor'}
                             </button>
                         </form>
                     </div>
@@ -249,9 +273,10 @@ const Admin: React.FC = () => {
                                         </button>
                                         <button
                                             type="submit"
-                                            className="px-4 py-2 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors shadow-sm shadow-primary-600/20"
+                                            disabled={isSubmitting}
+                                            className={`px-4 py-2 text-white rounded-xl font-medium shadow-sm transition-colors ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-600/20'}`}
                                         >
-                                            Actualizar
+                                            {isSubmitting ? 'Actualizando...' : 'Actualizar'}
                                         </button>
                                     </div>
                                 </form>

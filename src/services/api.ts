@@ -18,6 +18,13 @@ const checkError = async (res: Response, defaultMessage: string) => {
 };
 
 export const api = {
+    // Initial fetch to fix N+1
+    getInitData: async (signal?: AbortSignal) => {
+        const res = await fetch(`${API_URL}/init`, { headers: getHeaders(), signal });
+        await checkError(res, 'Error al cargar datos iniciales');
+        return res.json();
+    },
+
     // auth / login
     login: async (credentials: any) => {
         const res = await fetch(`${API_URL}/login`, {

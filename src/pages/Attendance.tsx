@@ -2,16 +2,80 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { Trash2, Check, X, Clock, Save, CheckCircle2, ArrowLeft, Search } from 'lucide-react';
+import { Trash2, Check, X, Clock, Save, CheckCircle2, ArrowLeft, Search, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { cn, getLocalISODate } from '../lib/utils';
 import type { AttendanceRecord } from '../types';
 import ConfirmModal from '../components/ConfirmModal';
+import { useOfflineSync } from '../hooks/useOfflineSync';
+
+const StudentCard = React.memo(({
+    student,
+    status,
+    onStatusChange,
+    index
+}: {
+    student: any,
+    status?: 'PRESENT' | 'ABSENT' | 'JUSTIFIED',
+    onStatusChange: (id: string, status: 'PRESENT' | 'ABSENT' | 'JUSTIFIED') => void,
+    index: number
+}) => {
+    return (
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both" style={{ animationDelay: `${Math.min(index * 20, 500)}ms` }}>
+            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-500 shrink-0">
+                {student.firstName[0]}{student.lastName[0]}
+            </div>
+
+            <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-slate-900 truncate">{student.firstName} {student.lastName}</h3>
+                <div className="flex gap-2 mt-3">
+                    <button
+                        onClick={() => onStatusChange(student.id, 'PRESENT')}
+                        className={cn(
+                            "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
+                            status === 'PRESENT'
+                                ? "bg-green-500 text-white shadow-md shadow-green-500/20"
+                                : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                        )}
+                        title="Presente"
+                    >
+                        <Check className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={() => onStatusChange(student.id, 'ABSENT')}
+                        className={cn(
+                            "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
+                            status === 'ABSENT'
+                                ? "bg-red-500 text-white shadow-md shadow-red-500/20"
+                                : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                        )}
+                        title="Ausente"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={() => onStatusChange(student.id, 'JUSTIFIED')}
+                        className={cn(
+                            "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
+                            status === 'JUSTIFIED'
+                                ? "bg-amber-500 text-white shadow-md shadow-amber-500/20"
+                                : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                        )}
+                        title="Justificado"
+                    >
+                        <Clock className="w-5 h-5" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+});
 
 const Attendance: React.FC = () => {
     const [searchParams] = useSearchParams();
     const classIdParam = searchParams.get('classId');
     const { data, saveAttendance, deleteAttendance } = useData();
     const { user } = useAuth();
+    const syncStatus = useOfflineSync();
 
     const [selectedClassId, setSelectedClassId] = useState<string>(classIdParam || '');
     const [attendanceState, setAttendanceState] = useState<Record<string, 'PRESENT' | 'ABSENT' | 'JUSTIFIED'>>({});
@@ -74,9 +138,9 @@ const Attendance: React.FC = () => {
         return { present, absent, justified };
     }, [attendanceState]);
 
-    const handleStatusChange = (studentId: string, status: 'PRESENT' | 'ABSENT' | 'JUSTIFIED') => {
+    const handleStatusChange = React.useCallback((studentId: string, status: 'PRESENT' | 'ABSENT' | 'JUSTIFIED') => {
         setAttendanceState(prev => ({ ...prev, [studentId]: status }));
-    };
+    }, []);
 
     const markAllPresent = () => {
         if (!selectedClass) return;
@@ -115,7 +179,16 @@ const Attendance: React.FC = () => {
                 setSelectedClassId(''); // lo devolvemos a la lista
             }, 2000);
         } catch (err: any) {
-            setError(err.message || 'Hubo un error al guardar la asistencia.');
+            if (err.message === 'OFFLINE_SAVED') {
+                setError('');
+                setSuccess('Sin conexión. La asistencia se guardará y se sincronizará automáticamente cuando vuelva internet.');
+                setTimeout(() => {
+                    setSuccess('');
+                    setSelectedClassId('');
+                }, 4000);
+            } else {
+                setError(err.message || 'Hubo un error al guardar la asistencia.');
+            }
         } finally {
             setIsSaving(false);
         }
@@ -147,15 +220,32 @@ const Attendance: React.FC = () => {
     const todayISO = getLocalISODate();
     const hasRecordToday = data.attendance.some(r => r.classId === selectedClassId && r.date === todayISO);
 
+    const renderSyncIndicator = () => (
+        <div className={cn(
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors",
+            syncStatus === 'Sincronizado' ? "bg-green-50 text-green-700 border-green-200" :
+                syncStatus === 'Pendiente de sincronizar' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                    "bg-red-50 text-red-700 border-red-200"
+        )}>
+            {syncStatus === 'Sincronizado' ? <Wifi className="w-3.5 h-3.5" /> :
+                syncStatus === 'Pendiente de sincronizar' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> :
+                    <WifiOff className="w-3.5 h-3.5" />}
+            {syncStatus}
+        </div>
+    );
+
     // si no hay clase elegida mostramos las tarjetas
     if (!selectedClassId || !selectedClass) {
         return (
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold text-slate-900">Seleccionar Aula</h1>
-                    <p className="text-slate-500">
-                        {user?.role === 'DIRECTOR' ? 'Vista de Director (Todas las aulas)' : 'Tus aulas asignadas'}
-                    </p>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900">Seleccionar Aula</h1>
+                        <p className="text-slate-500">
+                            {user?.role === 'DIRECTOR' ? 'Vista de Director (Todas las aulas)' : 'Tus aulas asignadas'}
+                        </p>
+                    </div>
+                    {renderSyncIndicator()}
                 </div>
                 {myClasses.length === 0 ? (
                     <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
@@ -188,70 +278,12 @@ const Attendance: React.FC = () => {
         );
     }
 
-    const StudentCard = React.memo(({
-        student,
-        status,
-        onStatusChange,
-        index
-    }: {
-        student: any,
-        status?: 'PRESENT' | 'ABSENT' | 'JUSTIFIED',
-        onStatusChange: (id: string, status: 'PRESENT' | 'ABSENT' | 'JUSTIFIED') => void,
-        index: number
-    }) => {
-        return (
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both" style={{ animationDelay: `${Math.min(index * 20, 500)}ms` }}>
-                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-500 shrink-0">
-                    {student.firstName[0]}{student.lastName[0]}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-900 truncate">{student.firstName} {student.lastName}</h3>
-                    <div className="flex gap-2 mt-3">
-                        <button
-                            onClick={() => onStatusChange(student.id, 'PRESENT')}
-                            className={cn(
-                                "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
-                                status === 'PRESENT'
-                                    ? "bg-green-500 text-white shadow-md shadow-green-500/20"
-                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                            )}
-                            title="Presente"
-                        >
-                            <Check className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => onStatusChange(student.id, 'ABSENT')}
-                            className={cn(
-                                "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
-                                status === 'ABSENT'
-                                    ? "bg-red-500 text-white shadow-md shadow-red-500/20"
-                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                            )}
-                            title="Ausente"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => onStatusChange(student.id, 'JUSTIFIED')}
-                            className={cn(
-                                "flex-1 py-2 rounded-lg flex justify-center items-center transition-all",
-                                status === 'JUSTIFIED'
-                                    ? "bg-amber-500 text-white shadow-md shadow-amber-500/20"
-                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                            )}
-                            title="Justificado"
-                        >
-                            <Clock className="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    });
-
     return (
         <div className="space-y-6">
+            <div className="flex justify-end">
+                {renderSyncIndicator()}
+            </div>
+
             {error && (
                 <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200">
                     {error}

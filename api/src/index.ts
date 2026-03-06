@@ -134,10 +134,10 @@ app.get('/api/init', async (c) => {
     }
 
     return c.json({
-        users: usersQuery,
-        classes: classesQuery,
-        students: studentsQuery,
-        attendance: attendanceQuery
+        users: usersQuery || [],
+        classes: classesQuery || [],
+        students: studentsQuery || [],
+        attendance: attendanceQuery || []
     })
 })
 
@@ -206,11 +206,18 @@ app.get('/api/classes', async (c) => {
 app.post('/api/classes', async (c) => {
     const user = c.get('user')
     if (user.role !== 'DIRECTOR') return c.json({ error: 'Prohibido' }, 403)
-    const { name, grade, professor_id } = await c.req.json()
-    const id = crypto.randomUUID()
+    const body = await c.req.json()
+    const id = body.id || crypto.randomUUID()
+    const name = body.name
+    const grade = body.grade || body.grado || (body.seccion ? `${body.grado}|${body.seccion}` : null)
+    const professor_id = body.professor_id || body.professorId
+
+    if (!name || !grade || !professor_id) {
+        return c.json({ error: 'Nombre, grado y profesor son requeridos' }, 400)
+    }
 
     await c.env.DB.prepare('INSERT INTO classes (id, name, grade, professor_id) VALUES (?, ?, ?, ?)')
-        .bind(id, name ?? null, grade ?? null, professor_id ?? null).run()
+        .bind(id, name, grade, professor_id).run()
 
     return c.json({ id, name, grade, professor_id }, 201)
 })
@@ -220,11 +227,14 @@ app.put('/api/classes/:id', async (c) => {
     if (user.role !== 'DIRECTOR') return c.json({ error: 'Prohibido' }, 403)
 
     const id = c.req.param('id')
-    const params = await c.req.json()
+    const body = await c.req.json()
+    const name = body.name
+    const grade = body.grade || body.grado || (body.seccion ? `${body.grado}|${body.seccion}` : null)
+    const professor_id = body.professor_id || body.professorId
 
     // allow partial updates via COALESCE
     await c.env.DB.prepare('UPDATE classes SET name = COALESCE(?, name), grade = COALESCE(?, grade), professor_id = COALESCE(?, professor_id) WHERE id = ?')
-        .bind(params.name ?? null, params.grade ?? null, params.professor_id ?? null, id).run()
+        .bind(name ?? null, grade ?? null, professor_id ?? null, id).run()
     return c.json({ success: true })
 })
 
@@ -257,17 +267,23 @@ app.get('/api/students/:classId', async (c) => {
     const { results } = await c.env.DB.prepare('SELECT * FROM students WHERE class_id = ?').bind(classId).all()
     return c.json(results)
 })
-
 app.post('/api/students', async (c) => {
     const user = c.get('user')
-    const { name, class_id } = await c.req.json()
+    const body = await c.req.json()
+    const class_id = body.class_id || body.classId
+    const id = body.id || crypto.randomUUID()
+
+    // Construct full name if sent as parts
+    let name = body.name
+    if (!name && body.firstName) {
+        name = `${body.firstName} ${body.lastName || ''}`.trim()
+    }
 
     if (user.role === 'PROFESSOR') {
         const cls = await c.env.DB.prepare('SELECT professor_id FROM classes WHERE id = ?').bind(class_id).first()
         if (!cls || cls.professor_id !== user.id) return c.json({ error: 'Prohibido' }, 403)
     }
 
-    const id = crypto.randomUUID()
     await c.env.DB.prepare('INSERT INTO students (id, name, class_id) VALUES (?, ?, ?)')
         .bind(id, name, class_id).run()
 
@@ -331,7 +347,13 @@ app.get('/api/attendance', async (c) => {
 
 app.post('/api/attendance', async (c) => {
     const user = c.get('user')
-    const { class_id, date, records } = await c.req.json() // records: [{student_id, status}]
+    const body = await c.req.json()
+    const class_id = body.class_id || body.classId
+    const date = body.date
+    const records = (body.records || []).map((r: any) => ({
+        student_id: r.student_id || r.studentId,
+        status: r.status
+    }))
 
     if (user.role === 'PROFESSOR') {
         const cls = await c.env.DB.prepare('SELECT professor_id FROM classes WHERE id = ?').bind(class_id).first()

@@ -8,7 +8,8 @@ import {
     Settings,
     ChevronDown,
     ChevronUp,
-    BookOpen
+    BookOpen,
+    Download
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -50,10 +51,10 @@ const guidesList = [
     },
     {
         id: 'exportar',
-        title: 'Exportar Configuración',
-        description: 'Sección para realizar copias de seguridad y exportar los datos del sistema.',
-        image: '/guias/exportar conf.png',
-        icon: Settings
+        title: 'Exportar Asistencia',
+        description: 'Cómo exportar los registros de asistencia en formatos PDF y Excel.',
+        image: '/guias/exportar-asistencia.png',
+        icon: Download
     },
     {
         id: 'ajustes',

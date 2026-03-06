@@ -270,6 +270,27 @@ async function runTests() {
         console.error('Error completo:', error);
     }
 
+    // ----------------------------------------------------------------------
+    // TEST 8 — Verificar manejo de usuario duplicado
+    // ----------------------------------------------------------------------
+    process.stdout.write('TEST 8 — Usuario duplicado... ');
+    try {
+        const duplicate = await apiRequest('/users', 'POST', {
+            name: 'Usuario Duplicado',
+            username: 'director', // ya existe
+            password: 'pass123',
+            role: 'PROFESSOR'
+        });
+        console.log('✖ FAIL (debería rechazarse)');
+    } catch (error) {
+        if (error.message && error.message.includes('nombre de usuario')) {
+            console.log('✔ PASS');
+        } else {
+            console.log('✖ FAIL');
+            console.error('Error inesperado:', error);
+        }
+    }
+
     console.log('\n===================================================');
     console.log('   PRUEBAS AUTOMÁTICAS FINALIZADAS   ');
     console.log('===================================================');

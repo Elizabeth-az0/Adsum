@@ -149,8 +149,17 @@ app.post('/api/users', async (c) => {
     const id = crypto.randomUUID()
     const hashed = await hashPassword(password)
 
-    await c.env.DB.prepare('INSERT INTO users (id, name, username, password_hash, role) VALUES (?, ?, ?, ?, ?)')
-        .bind(id, name, username, hashed, role).run()
+    try {
+        await c.env.DB.prepare('INSERT INTO users (id, name, username, password_hash, role) VALUES (?, ?, ?, ?, ?)')
+            .bind(id, name, username, hashed, role).run()
+    } catch (err: any) {
+        // sqlite / D1 returns errors with message containing UNIQUE constraint info
+        if (err.message && err.message.includes('UNIQUE constraint failed: users.username')) {
+            return c.json({ error: 'El nombre de usuario ya existe' }, 400)
+        }
+        console.error('User creation failed', err)
+        return c.json({ error: `Error interno del servidor: ${err.message}` }, 500)
+    }
 
     return c.json({ id, name, username, role }, 201)
 })
@@ -162,14 +171,23 @@ app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id')
     const { name, password, role } = await c.req.json()
 
-    if (password) {
-        const hashed = await hashPassword(password)
-        await c.env.DB.prepare('UPDATE users SET name = ?, password_hash = ?, role = ? WHERE id = ?')
-            .bind(name, hashed, role, id).run()
-    } else {
-        await c.env.DB.prepare('UPDATE users SET name = ?, role = ? WHERE id = ?')
-            .bind(name, role, id).run()
+    try {
+        if (password) {
+            const hashed = await hashPassword(password)
+            await c.env.DB.prepare('UPDATE users SET name = ?, password_hash = ?, role = ? WHERE id = ?')
+                .bind(name, hashed, role, id).run()
+        } else {
+            await c.env.DB.prepare('UPDATE users SET name = ?, role = ? WHERE id = ?')
+                .bind(name, role, id).run()
+        }
+    } catch (err: any) {
+        if (err.message && err.message.includes('UNIQUE constraint failed: users.username')) {
+            return c.json({ error: 'El nombre de usuario ya existe' }, 400)
+        }
+        console.error('User update failed', err)
+        return c.json({ error: `Error interno del servidor: ${err.message}` }, 500)
     }
+
     return c.json({ success: true })
 })
 

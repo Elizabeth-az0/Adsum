@@ -3,7 +3,6 @@ export type Role = 'DIRECTOR' | 'PROFESSOR';
 export interface User {
     id: string;
     username: string;
-    password?: string; // ojito, no tan seguro pero toca guardarla acá
     name: string;
     role: Role;
     avatar?: string;

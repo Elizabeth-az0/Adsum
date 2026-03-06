@@ -103,6 +103,44 @@ app.get('/api/users', async (c) => {
     return c.json(results)
 })
 
+// ----- INIT (N+1 Fix) -----
+app.get('/api/init', async (c) => {
+    const user = c.get('user')
+    let usersQuery: any[] = []
+    let classesQuery: any[] = []
+    let studentsQuery: any[] = []
+    let attendanceQuery: any[] = []
+
+    if (user.role === 'DIRECTOR') {
+        const [u, cl, st, at] = await c.env.DB.batch([
+            c.env.DB.prepare('SELECT id, name, username, role, created_at FROM users'),
+            c.env.DB.prepare('SELECT * FROM classes'),
+            c.env.DB.prepare('SELECT * FROM students'),
+            c.env.DB.prepare('SELECT * FROM attendance')
+        ])
+        usersQuery = u.results
+        classesQuery = cl.results
+        studentsQuery = st.results
+        attendanceQuery = at.results
+    } else {
+        const [cl, st, at] = await c.env.DB.batch([
+            c.env.DB.prepare('SELECT * FROM classes WHERE professor_id = ?').bind(user.id),
+            c.env.DB.prepare('SELECT s.* FROM students s JOIN classes c ON s.class_id = c.id WHERE c.professor_id = ?').bind(user.id),
+            c.env.DB.prepare('SELECT a.* FROM attendance a JOIN classes c ON a.class_id = c.id WHERE c.professor_id = ?').bind(user.id)
+        ])
+        classesQuery = cl.results
+        studentsQuery = st.results
+        attendanceQuery = at.results
+    }
+
+    return c.json({
+        users: usersQuery,
+        classes: classesQuery,
+        students: studentsQuery,
+        attendance: attendanceQuery
+    })
+})
+
 app.post('/api/users', async (c) => {
     const user = c.get('user')
     if (user.role !== 'DIRECTOR') return c.json({ error: 'Prohibido' }, 403)
@@ -196,9 +234,13 @@ app.delete('/api/classes/:id', async (c) => {
 
     const id = c.req.param('id')
 
-    await c.env.DB.prepare('DELETE FROM attendance WHERE class_id = ?').bind(id).run()
-    await c.env.DB.prepare('DELETE FROM students WHERE class_id = ?').bind(id).run()
-    await c.env.DB.prepare('DELETE FROM classes WHERE id = ?').bind(id).run()
+    // Relying on ON DELETE CASCADE for attendance and students
+    // Extra safety query array batch for SQLite D1 environments without forced PRAGMA foreign_keys
+    await c.env.DB.batch([
+        c.env.DB.prepare('DELETE FROM attendance WHERE class_id = ?').bind(id),
+        c.env.DB.prepare('DELETE FROM students WHERE class_id = ?').bind(id),
+        c.env.DB.prepare('DELETE FROM classes WHERE id = ?').bind(id)
+    ])
     return c.json({ success: true, message: 'Aula y datos asociados eliminados.' })
 })
 
@@ -243,8 +285,12 @@ app.delete('/api/students/:id', async (c) => {
         if (!cls || cls.professor_id !== user.id) return c.json({ error: 'Prohibido' }, 403)
     }
 
-    await c.env.DB.prepare('DELETE FROM attendance WHERE student_id = ?').bind(id).run()
-    await c.env.DB.prepare('DELETE FROM students WHERE id = ?').bind(id).run()
+    // Relying on ON DELETE CASCADE for attendance
+    // Extra safety query array batch for SQLite D1
+    await c.env.DB.batch([
+        c.env.DB.prepare('DELETE FROM attendance WHERE student_id = ?').bind(id),
+        c.env.DB.prepare('DELETE FROM students WHERE id = ?').bind(id)
+    ])
     return c.json({ success: true, message: 'Estudiante y registros asociados eliminados.' })
 })
 

@@ -32,6 +32,10 @@ const Classes: React.FC = () => {
     const [newClass, setNewClass] = useState({ name: '', grado: '', seccion: '', professorId: '' });
     const [editingClassId, setEditingClassId] = useState<string | null>(null);
 
+    const [error, setError] = useState<string>('');
+    const [success, setSuccess] = useState<string>('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     // para confirmar cuando se borra algo
     const [classToDelete, setClassToDelete] = useState<string | null>(null);
     const [studentToRemove, setStudentToRemove] = useState<string | null>(null);
@@ -42,8 +46,11 @@ const Classes: React.FC = () => {
         .map(id => data.students[id])
         .filter(s => s && (s.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || s.lastName.toLowerCase().includes(searchTerm.toLowerCase()))) || [];
 
-    const handleAddStudent = (e: React.FormEvent) => {
+    const handleAddStudent = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+        setSuccess('');
+        setIsSubmitting(true);
         try {
             if (selectedClassId && newStudentName && newStudentLastName) {
                 const isDuplicate = selectedClass?.studentIds.some(id => {
@@ -53,25 +60,32 @@ const Classes: React.FC = () => {
                 });
 
                 if (isDuplicate) {
-                    alert('Ya existe un estudiante con este nombre en la clase.');
+                    setError('Ya existe un estudiante con este nombre en la clase.');
+                    setIsSubmitting(false);
                     return;
                 }
 
-                addStudentToClass(selectedClassId, {
+                await addStudentToClass(selectedClassId, {
                     firstName: newStudentName,
                     lastName: newStudentLastName,
                     avatar: ''
                 }, user);
                 setNewStudentName('');
                 setNewStudentLastName('');
+                setSuccess('Estudiante agregado con éxito');
             }
-        } catch (error: any) {
-            alert(error.message);
+        } catch (err: any) {
+            setError(err.message || 'Error al agregar estudiante');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleAddClass = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+        setSuccess('');
+        setIsSubmitting(true);
         try {
             if (editingClassId) {
                 await updateClass(editingClassId, {
@@ -81,7 +95,7 @@ const Classes: React.FC = () => {
                     professorId: newClass.professorId
                 }, user);
                 setEditingClassId(null);
-                alert('Aula actualizada con éxito');
+                setSuccess('Aula actualizada con éxito');
             } else {
                 if (newClass.professorId) {
                     await addClass({
@@ -90,12 +104,14 @@ const Classes: React.FC = () => {
                         seccion: newClass.seccion,
                         professorId: newClass.professorId
                     }, user);
-                    alert('Aula creada con éxito');
+                    setSuccess('Aula creada con éxito');
                 }
             }
             setNewClass({ name: '', grado: '', seccion: '', professorId: '' });
-        } catch (error: any) {
-            alert(error.message);
+        } catch (err: any) {
+            setError(err.message || 'Error al gestionar el aula');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -133,6 +149,17 @@ const Classes: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h1 className="text-2xl font-bold text-slate-900">Gestión de Aulas</h1>
             </div>
+
+            {error && (
+                <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200">
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div className="bg-green-50 text-green-700 p-4 rounded-xl border border-green-200">
+                    {success}
+                </div>
+            )}
 
             {isDirector && (
                 <div className="flex gap-4 border-b border-slate-200">
@@ -224,9 +251,10 @@ const Classes: React.FC = () => {
                                 </div>
                                 <button
                                     type="submit"
-                                    className="w-full bg-slate-900 text-white py-3 rounded-xl font-medium hover:bg-slate-800 transition-colors"
+                                    disabled={isSubmitting}
+                                    className={`w-full text-white py-3 rounded-xl font-medium transition-colors ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'}`}
                                 >
-                                    {editingClassId ? 'Actualizar Aula' : 'Crear Aula'}
+                                    {isSubmitting ? 'Guardando...' : editingClassId ? 'Actualizar Aula' : 'Crear Aula'}
                                 </button>
                             </form>
                         </div>
@@ -326,10 +354,11 @@ const Classes: React.FC = () => {
                                         </div>
                                         <button
                                             type="submit"
-                                            className="w-full bg-slate-900 text-white py-3 rounded-xl font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                                            disabled={isSubmitting}
+                                            className={`w-full text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'}`}
                                         >
                                             <Plus className="w-5 h-5" />
-                                            Agregar Estudiante
+                                            {isSubmitting ? 'Agregando...' : 'Agregar Estudiante'}
                                         </button>
                                     </form>
                                 </div>
@@ -466,9 +495,10 @@ const Classes: React.FC = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-4 py-2 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors shadow-sm shadow-primary-600/20"
+                                        disabled={isSubmitting}
+                                        className={`px-4 py-2 text-white rounded-xl font-medium shadow-sm transition-colors ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-600/20'}`}
                                     >
-                                        Actualizar
+                                        {isSubmitting ? 'Actualizando...' : 'Actualizar'}
                                     </button>
                                 </div>
                             </form>
@@ -496,12 +526,13 @@ const Classes: React.FC = () => {
                 isOpen={!!studentToRemove}
                 title="Remover Estudiante"
                 message="¿Remover a este estudiante del aula actual? Sus registros de asistencia podrían verse afectados."
-                onConfirm={() => {
+                onConfirm={async () => {
                     if (studentToRemove && selectedClassId) {
                         try {
-                            removeStudentFromClass(selectedClassId, studentToRemove, user);
+                            await removeStudentFromClass(selectedClassId, studentToRemove, user);
                             setStudentToRemove(null);
-                        } catch (e: any) { alert(e.message); }
+                            setSuccess('Estudiante removido');
+                        } catch (e: any) { setError(e.message); }
                     }
                 }}
                 onCancel={() => setStudentToRemove(null)}

@@ -16,21 +16,21 @@ CREATE TABLE classes (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     grade TEXT NOT NULL,
-    professor_id TEXT NOT NULL REFERENCES users(id),
+    professor_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE students (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    class_id TEXT NOT NULL REFERENCES classes(id),
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE attendance (
     id TEXT PRIMARY KEY,
-    student_id TEXT NOT NULL REFERENCES students(id),
-    class_id TEXT NOT NULL REFERENCES classes(id),
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
     date TEXT NOT NULL,
     status TEXT CHECK(status IN ('PRESENT', 'ABSENT', 'JUSTIFIED')) NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -38,6 +38,8 @@ CREATE TABLE attendance (
 );
 
 CREATE INDEX idx_attendance_class_date ON attendance (class_id, date);
+CREATE INDEX idx_attendance_student_id ON attendance (student_id);
+CREATE INDEX idx_attendance_date ON attendance (date);
 CREATE INDEX idx_students_class_id ON students (class_id);
 CREATE INDEX idx_classes_professor_id ON classes (professor_id);
 

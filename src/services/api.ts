@@ -1,4 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL || 'https://adsum-api.elizabethgaldames35.workers.dev/api';
+const PROD_API_URL = 'https://adsum-api.elizabethgaldames35.workers.dev/api';
+// Si estamos en localhost pero no hay una variable VITE_API_URL definida, 
+// podríamos querer usar la de producción igualmente.
+const API_URL = import.meta.env.VITE_API_URL || PROD_API_URL;
+
 console.log('Using API URL:', API_URL);
 
 const getHeaders = () => {

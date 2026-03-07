@@ -195,14 +195,12 @@ const Reports: React.FC = () => {
                                 <th className="pb-4 font-medium">Estudiante</th>
                                 <th className="pb-4 font-medium">Clase</th>
                                 <th className="pb-4 font-medium">Faltas totales</th>
-                                <th className="pb-4 font-medium">Asistencia</th>
+                                <th className="pb-4 font-medium">Días presentes</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {riskStudents.length > 0 ? (
                                 riskStudents.map(student => {
-                                    const rawRate = student.attendanceHistory.total ? (student.attendanceHistory.present / student.attendanceHistory.total) * 100 : 0;
-                                    const rate = Math.round(rawRate);
                                     return (
                                         <tr key={student.id} className="group hover:bg-slate-50 transition-colors">
                                             <td className="py-4">
@@ -219,8 +217,8 @@ const Reports: React.FC = () => {
                                             <td className="py-4">
                                                 <span className="font-bold text-red-600">{student.attendanceHistory.absent} / 30</span>
                                             </td>
-                                            <td className="py-4 text-slate-600">
-                                                {rate}%
+                                            <td className="py-4 text-slate-600 font-medium">
+                                                {student.attendanceHistory.present} días
                                             </td>
                                         </tr>
                                     );

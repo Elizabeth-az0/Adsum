@@ -1,4 +1,5 @@
 const API_URL = import.meta.env.VITE_API_URL || 'https://adsum-api.elizabethgaldames35.workers.dev/api';
+console.log('Using API URL:', API_URL);
 
 const getHeaders = () => {
     const token = localStorage.getItem('adsum_token');

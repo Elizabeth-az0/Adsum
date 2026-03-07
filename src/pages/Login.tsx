@@ -25,10 +25,15 @@ const Login: React.FC = () => {
             if (success) {
                 navigate('/');
             } else {
-                setError('Credenciales inválidas');
+                setError('Usuario o contraseña incorrectos.');
             }
-        } catch (err) {
-            setError('Error de conexión o credenciales inválidas');
+        } catch (err: any) {
+            console.error('Login error detail:', err);
+            if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+                setError('No se pudo conectar con el servidor. ¿Está el backend encendido?');
+            } else {
+                setError('Error al intentar iniciar sesión. Por favor intente de nuevo.');
+            }
         } finally {
             setIsLoading(false);
         }

@@ -25,9 +25,11 @@ const Reports: React.FC = () => {
         if (timeFilter === 'today') {
             threshold.setHours(0, 0, 0, 0);
         } else if (timeFilter === 'week') {
-            threshold.setDate(threshold.getDate() - 7);
+            threshold.setDate(threshold.getDate() - 6); // Ultimos 7 dias incluyendo hoy
+            threshold.setHours(0, 0, 0, 0);
         } else if (timeFilter === 'month') {
-            threshold.setMonth(threshold.getMonth() - 1);
+            threshold.setDate(1); // Desde el dia 1 del mes actual
+            threshold.setHours(0, 0, 0, 0);
         }
 
         return data.attendance.filter(r => {
@@ -49,17 +51,26 @@ const Reports: React.FC = () => {
         let totalAbsent = 0;
         let totalJustified = 0;
 
-        // barras según el filtro
-        let daysToGenerate = 5;
-        if (timeFilter === 'today') daysToGenerate = 1;
-        if (timeFilter === 'week') daysToGenerate = 7;
-        if (timeFilter === 'month') daysToGenerate = 30;
+        let trendDays: string[] = [];
 
-        const trendDays = Array.from({ length: daysToGenerate }, (_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - (daysToGenerate - 1 - i));
-            return d.toISOString().split('T')[0];
-        });
+        if (timeFilter === 'month') {
+            const now = new Date();
+            const daysInMonthUntilNow = now.getDate();
+            trendDays = Array.from({ length: daysInMonthUntilNow }, (_, i) => {
+                const d = new Date(now.getFullYear(), now.getMonth(), i + 1);
+                // Adjust to local ISO string (avoids timezone shift issues with simple toISOString)
+                const offset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - offset).toISOString().split('T')[0];
+            });
+        } else {
+            let daysToGenerate = timeFilter === 'today' ? 1 : 7;
+            trendDays = Array.from({ length: daysToGenerate }, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (daysToGenerate - 1 - i));
+                const offset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - offset).toISOString().split('T')[0];
+            });
+        }
 
         const trendData = trendDays.map(dateStr => {
             const dayRecords = filteredAttendance.filter(r => r.date === dateStr);

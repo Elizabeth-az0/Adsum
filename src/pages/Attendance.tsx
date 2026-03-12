@@ -152,6 +152,12 @@ const Attendance: React.FC = () => {
     const handleSave = async () => {
         if (!selectedClass || isSaving) return;
 
+        if (selectedClass.studentIds.length === 0) {
+            setError('No hay estudiantes en esta clase para registrar asistencia.');
+            setSuccess('');
+            return;
+        }
+
         const missing = selectedClass.studentIds.some(id => !attendanceState[id]);
         if (missing) {
             setError('Por favor, registra la asistencia de todos los estudiantes antes de guardar.');
@@ -216,7 +222,7 @@ const Attendance: React.FC = () => {
         }
     };
 
-    const hasRecordToday = data.attendance.some(r => r.classId === selectedClassId && r.date === selectedDate);
+    const hasRecordToday = Object.keys(attendanceState).length > 0 && data.attendance.some(r => r.classId === selectedClassId && r.date === selectedDate && r.records && r.records.length > 0);
 
     const renderSyncIndicator = () => (
         <div className={cn(

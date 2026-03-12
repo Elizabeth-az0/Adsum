@@ -280,6 +280,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const saveAttendance = useCallback(async (record: AttendanceRecord) => {
         try {
+            if (!record.records || record.records.length === 0) {
+                throw new Error('Sin estudiantes para registrar');
+            }
+
             if (!navigator.onLine) {
                 const { saveToOfflineQueue } = await import('../lib/offlineQueue');
                 await saveToOfflineQueue({

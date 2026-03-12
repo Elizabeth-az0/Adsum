@@ -142,7 +142,7 @@ const Dashboard: React.FC = () => {
                 {myClasses.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {myClasses.map(cls => {
-                            const isTaken = data.attendance.some(r => r.classId === cls.id && r.date === todayISO);
+                            const isTaken = data.attendance.some(r => r.classId === cls.id && r.date === todayISO && r.records && r.records.length > 0);
 
                             return (
                                 <div key={cls.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">

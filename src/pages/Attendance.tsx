@@ -78,6 +78,7 @@ const Attendance: React.FC = () => {
     const syncStatus = useOfflineSync();
 
     const [selectedClassId, setSelectedClassId] = useState<string>(classIdParam || '');
+    const [selectedDate, setSelectedDate] = useState<string>(getLocalISODate());
     const [attendanceState, setAttendanceState] = useState<Record<string, 'PRESENT' | 'ABSENT' | 'JUSTIFIED'>>({});
     const [searchTerm, setSearchTerm] = useState('');
     const [error, setError] = useState<string>('');
@@ -96,13 +97,12 @@ const Attendance: React.FC = () => {
         }
     }, [classIdParam]);
 
-    // traemos los datos cuando se elige otra clase
+    // traemos los datos cuando se elige otra clase o se cambia la fecha
     useEffect(() => {
         if (selectedClassId) {
             const cls = data.classes.find(c => c.id === selectedClassId);
             if (cls) {
-                const todayISO = getLocalISODate();
-                const existingRecord = data.attendance.find(r => r.classId === selectedClassId && r.date === todayISO);
+                const existingRecord = data.attendance.find(r => r.classId === selectedClassId && r.date === selectedDate);
 
                 if (existingRecord) {
                     const loadedState: Record<string, 'PRESENT' | 'ABSENT' | 'JUSTIFIED'> = {};
@@ -117,7 +117,7 @@ const Attendance: React.FC = () => {
                 setSuccess('');
             }
         }
-    }, [selectedClassId, data.classes, data.attendance]);
+    }, [selectedClassId, selectedDate, data.classes, data.attendance]);
 
     const selectedClass = data.classes.find(c => c.id === selectedClassId);
 
@@ -162,7 +162,7 @@ const Attendance: React.FC = () => {
         setIsSaving(true);
         const record: AttendanceRecord = {
             id: Math.random().toString(36).substr(2, 9),
-            date: getLocalISODate(),
+            date: selectedDate,
             classId: selectedClass.id,
             records: Object.entries(attendanceState).map(([studentId, status]) => ({
                 studentId,
@@ -200,9 +200,8 @@ const Attendance: React.FC = () => {
 
     const confirmDelete = async () => {
         if (!selectedClass) return;
-        const todayISO = getLocalISODate();
         try {
-            await deleteAttendance(selectedClass.id, todayISO, user);
+            await deleteAttendance(selectedClass.id, selectedDate, user);
             setAttendanceState({});
             setSuccess('Registro eliminado correctamente.');
             setError('');
@@ -217,8 +216,7 @@ const Attendance: React.FC = () => {
         }
     };
 
-    const todayISO = getLocalISODate();
-    const hasRecordToday = data.attendance.some(r => r.classId === selectedClassId && r.date === todayISO);
+    const hasRecordToday = data.attendance.some(r => r.classId === selectedClassId && r.date === selectedDate);
 
     const renderSyncIndicator = () => (
         <div className={cn(
@@ -303,7 +301,15 @@ const Attendance: React.FC = () => {
                     </button>
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">{selectedClass.name}</h1>
-                        <p className="text-slate-500">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                max={getLocalISODate()}
+                                className="text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -398,7 +404,7 @@ const Attendance: React.FC = () => {
             <ConfirmModal
                 isOpen={isDeleteModalOpen}
                 title="Eliminar Registro"
-                message="¿Seguro que deseas eliminar el registro de asistencia de hoy para esta clase? Esta acción no se puede deshacer y los reportes se actualizarán."
+                message={`¿Seguro que deseas eliminar el registro de asistencia del ${selectedDate} para esta clase? Esta acción no se puede deshacer y los reportes se actualizarán.`}
                 onConfirm={confirmDelete}
                 onCancel={() => setIsDeleteModalOpen(false)}
             />

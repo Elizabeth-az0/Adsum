@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return false;
         } catch (err) {
             console.error('Login failed', err);
-            throw err; // Re-lanzar para que el componente Login maneje el mensaje de error
+            throw err; 
         }
     };
 

@@ -27,7 +27,7 @@ app.notFound((c) => {
 app.use(
     '/api/*',
     cors({
-        origin: '*', // En producción podrías restringirlo a 'https://adsum.pages.dev'
+        origin: '*', 
         allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
         allowMethods: ['POST', 'GET', 'OPTIONS', 'PUT', 'DELETE'],
         exposeHeaders: ['Content-Length'],
@@ -56,7 +56,7 @@ app.post('/api/login', async (c) => {
     const payload: UserPayload = {
         id: user.id as string,
         role: user.role as 'DIRECTOR' | 'PROFESSOR',
-        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8, // 8 hours
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8, 
     }
 
     const token = await sign(payload, c.env.JWT_SECRET)
@@ -72,9 +72,7 @@ app.post('/api/login', async (c) => {
     })
 })
 
-// Middleware for authentication
 app.use('/api/*', async (c, next) => {
-    // Exclude login and CORS preflight options
     if (c.req.method === 'OPTIONS' || c.req.path === '/api/login') {
         return next()
     }
@@ -94,7 +92,6 @@ app.use('/api/*', async (c, next) => {
     }
 })
 
-// ----- USERS -----
 app.get('/api/users', async (c) => {
     const user = c.get('user')
     if (user.role !== 'DIRECTOR') return c.json({ error: 'Prohibido' }, 403)
@@ -103,7 +100,6 @@ app.get('/api/users', async (c) => {
     return c.json(results)
 })
 
-// ----- INIT (N+1 Fix) -----
 app.get('/api/init', async (c) => {
     const user = c.get('user')
     let usersQuery: any[] = []
@@ -153,7 +149,6 @@ app.post('/api/users', async (c) => {
         await c.env.DB.prepare('INSERT INTO users (id, name, username, password_hash, role) VALUES (?, ?, ?, ?, ?)')
             .bind(id, name, username, hashed, role).run()
     } catch (err: any) {
-        // sqlite / D1 returns errors with message containing UNIQUE constraint info
         if (err.message && err.message.includes('UNIQUE constraint failed: users.username')) {
             return c.json({ error: 'El nombre de usuario ya existe' }, 400)
         }
@@ -209,7 +204,6 @@ app.delete('/api/users/:id', async (c) => {
     return c.json({ success: true, message: 'Usuario eliminado.' })
 })
 
-// ----- CLASSES -----
 app.get('/api/classes', async (c) => {
     const user = c.get('user')
     if (user.role === 'DIRECTOR') {
@@ -250,7 +244,6 @@ app.put('/api/classes/:id', async (c) => {
     const grade = body.grade || body.grado || (body.seccion ? `${body.grado}|${body.seccion}` : null)
     const professor_id = body.professor_id || body.professorId
 
-    // allow partial updates via COALESCE
     await c.env.DB.prepare('UPDATE classes SET name = COALESCE(?, name), grade = COALESCE(?, grade), professor_id = COALESCE(?, professor_id) WHERE id = ?')
         .bind(name ?? null, grade ?? null, professor_id ?? null, id).run()
     return c.json({ success: true })
@@ -262,8 +255,6 @@ app.delete('/api/classes/:id', async (c) => {
 
     const id = c.req.param('id')
 
-    // Relying on ON DELETE CASCADE for attendance and students
-    // Extra safety query array batch for SQLite D1 environments without forced PRAGMA foreign_keys
     await c.env.DB.batch([
         c.env.DB.prepare('DELETE FROM attendance WHERE class_id = ?').bind(id),
         c.env.DB.prepare('DELETE FROM students WHERE class_id = ?').bind(id),
@@ -272,7 +263,6 @@ app.delete('/api/classes/:id', async (c) => {
     return c.json({ success: true, message: 'Aula y datos asociados eliminados.' })
 })
 
-// ----- STUDENTS -----
 app.get('/api/students/:classId', async (c) => {
     const user = c.get('user')
     const classId = c.req.param('classId')
@@ -291,7 +281,6 @@ app.post('/api/students', async (c) => {
     const class_id = body.class_id || body.classId
     const id = body.id || crypto.randomUUID()
 
-    // Construct full name if sent as parts
     let name = body.name
     if (!name && body.firstName) {
         name = `${body.firstName} ${body.lastName || ''}`.trim()
@@ -319,8 +308,6 @@ app.delete('/api/students/:id', async (c) => {
         if (!cls || cls.professor_id !== user.id) return c.json({ error: 'Prohibido' }, 403)
     }
 
-    // Relying on ON DELETE CASCADE for attendance
-    // Extra safety query array batch for SQLite D1
     await c.env.DB.batch([
         c.env.DB.prepare('DELETE FROM attendance WHERE student_id = ?').bind(id),
         c.env.DB.prepare('DELETE FROM students WHERE id = ?').bind(id)
@@ -333,7 +320,6 @@ app.get('/api/attendance', async (c) => {
     const date = c.req.query('date')
     const user = c.get('user')
 
-    // Si hay classId, aplicamos validación original
     if (classId) {
         if (user.role === 'PROFESSOR') {
             const cls = await c.env.DB.prepare('SELECT professor_id FROM classes WHERE id = ?').bind(classId).first()
@@ -348,7 +334,6 @@ app.get('/api/attendance', async (c) => {
             return c.json(results)
         }
     } else {
-        // Optimización masiva: retornar toda la asistencia relevante (sin N+1)
         if (user.role === 'DIRECTOR') {
             const { results } = await c.env.DB.prepare('SELECT * FROM attendance').all()
             return c.json(results)
@@ -382,7 +367,6 @@ app.post('/api/attendance', async (c) => {
         return c.json({ success: true, message: 'Sin estudiantes para registrar' })
     }
 
-    // To avoid duplicates, insert or replace using the UNIQUE constraint on (class_id, student_id, date)
     const stmts = records.map((r: any) => {
         return c.env.DB.prepare('INSERT OR REPLACE INTO attendance (id, student_id, class_id, date, status) VALUES (COALESCE((SELECT id FROM attendance WHERE class_id = ? AND student_id = ? AND date = ?), ?), ?, ?, ?, ?)')
             .bind(
@@ -409,7 +393,6 @@ app.delete('/api/attendance/:classId/:date', async (c) => {
     return c.json({ success: true })
 })
 
-// ----- REPORTS -----
 app.get('/api/reports', async (c) => {
     const from = c.req.query('from')
     const to = c.req.query('to')
@@ -425,7 +408,7 @@ app.get('/api/reports', async (c) => {
         bindParams.push(user.id)
     }
 
-    // Agregación por estado
+    
     const q = `
     SELECT a.class_id, a.status, COUNT(*) as count, c.name as class_name
     FROM attendance a
@@ -457,32 +440,28 @@ app.get('/api/reports', async (c) => {
     })
 })
 
-// ----- ATTENDANCE REPORTS -----
+
 app.get('/api/reports/attendance', async (c) => {
     const user = c.get('user')
     const classId = c.req.query('classId')
-    const month = c.req.query('month') // "01" - "12"
-    const year = c.req.query('year') // "2024"
+    const month = c.req.query('month')
+    const year = c.req.query('year') 
     const reportType = c.req.query('reportType')
 
     if (!classId || !month || !year) {
         return c.json({ error: 'Faltan parámetros: classId, month, year' }, 400)
     }
 
-    // RBAC: PROFESSOR solo puede exportar sus propias aulas
     if (user.role === 'PROFESSOR') {
         const cls = await c.env.DB.prepare('SELECT professor_id FROM classes WHERE id = ?').bind(classId).first()
         if (!cls || cls.professor_id !== user.id) return c.json({ error: 'Prohibido: No tienes acceso a esta aula' }, 403)
     }
 
-    // 1. Obtener información básica del aula
     const classInfo = await c.env.DB.prepare('SELECT * FROM classes WHERE id = ?').bind(classId).first()
     if (!classInfo) return c.json({ error: 'Aula no encontrada' }, 404)
 
-    // 2. Obtener estudiantes del aula
     const { results: students } = await c.env.DB.prepare('SELECT id, name FROM students WHERE class_id = ? ORDER BY name ASC').bind(classId).all()
 
-    // 3. Obtener asistencias del periodo
     const datePattern = `${year}-${month}-%`
     const { results: attendance } = await c.env.DB.prepare(`
         SELECT student_id, date, status 
@@ -491,7 +470,6 @@ app.get('/api/reports/attendance', async (c) => {
         ORDER BY date ASC
     `).bind(classId, datePattern).all()
 
-    // 4. Calcular estadísticas por estudiante
     const statsByStudent = students.map(s => {
         const studentAttendance = attendance.filter((a: any) => a.student_id === s.id)
         const present = studentAttendance.filter((a: any) => a.status === 'PRESENT').length
@@ -511,7 +489,6 @@ app.get('/api/reports/attendance', async (c) => {
         }
     })
 
-    // 5. Estadísticas globales del aula
     const totalStudents = students.length
     const avgAttendance = statsByStudent.length > 0
         ? statsByStudent.reduce((acc, curr) => acc + curr.percent, 0) / statsByStudent.length

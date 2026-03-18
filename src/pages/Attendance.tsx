@@ -86,7 +86,7 @@ const Attendance: React.FC = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    // las clases de este profe (o todas si es dire)
+    
     const myClasses = data.classes.filter(c =>
         user?.role === 'DIRECTOR' || c.professorId === user?.id
     );
@@ -97,7 +97,6 @@ const Attendance: React.FC = () => {
         }
     }, [classIdParam]);
 
-    // traemos los datos cuando se elige otra clase o se cambia la fecha
     useEffect(() => {
         if (selectedClassId) {
             const cls = data.classes.find(c => c.id === selectedClassId);
@@ -182,7 +181,7 @@ const Attendance: React.FC = () => {
             setSuccess('Asistencia guardada correctamente.');
             setTimeout(() => {
                 setSuccess('');
-                setSelectedClassId(''); // lo devolvemos a la lista
+                setSelectedClassId('');
             }, 2000);
         } catch (err: any) {
             if (err.message === 'OFFLINE_SAVED') {
@@ -214,7 +213,7 @@ const Attendance: React.FC = () => {
             setIsDeleteModalOpen(false);
             setTimeout(() => {
                 setSuccess('');
-                setSelectedClassId(''); // de vuelta al inicio
+                setSelectedClassId('');
             }, 2000);
         } catch (err: any) {
             setError(err.message || 'Hubo un error al eliminar el registro.');
@@ -238,7 +237,6 @@ const Attendance: React.FC = () => {
         </div>
     );
 
-    // si no hay clase elegida mostramos las tarjetas
     if (!selectedClassId || !selectedClass) {
         return (
             <div className="space-y-6">

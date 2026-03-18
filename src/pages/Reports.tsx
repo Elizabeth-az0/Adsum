@@ -16,7 +16,6 @@ const Reports: React.FC = () => {
     );
     const myClassIds = myClasses.map(c => c.id);
 
-    // filtramos la asis según el tiempo
     const filteredAttendance = useMemo(() => {
         const now = new Date();
         now.setHours(23, 59, 59, 999);
@@ -25,27 +24,25 @@ const Reports: React.FC = () => {
         if (timeFilter === 'today') {
             threshold.setHours(0, 0, 0, 0);
         } else if (timeFilter === 'week') {
-            threshold.setDate(threshold.getDate() - 6); // Ultimos 7 dias incluyendo hoy
+            threshold.setDate(threshold.getDate() - 6); 
             threshold.setHours(0, 0, 0, 0);
         } else if (timeFilter === 'month') {
-            threshold.setDate(1); // Desde el dia 1 del mes actual
+            threshold.setDate(1); 
             threshold.setHours(0, 0, 0, 0);
         }
 
         return data.attendance.filter(r => {
-            const rDate = new Date(r.date + 'T12:00:00'); // Normalize 
+            const rDate = new Date(r.date + 'T12:00:00'); 
             return myClassIds.includes(r.classId) && rDate >= threshold && rDate <= now;
         });
     }, [data.attendance, timeFilter, myClassIds]);
 
-    // los que están en rojo (por el total histórico)
     const riskStudents = useMemo(() => {
         return Object.values(data.students)
             .filter(s => s.risk && myClassIds.some(cid => data.classes.find(c => c.id === cid)?.studentIds.includes(s.id)))
             .sort((a, b) => b.attendanceHistory.absent - a.attendanceHistory.absent);
     }, [data.students, myClassIds, data.classes]);
 
-    // data para los gráficos
     const chartData = useMemo(() => {
         let totalPresent = 0;
         let totalAbsent = 0;
@@ -58,7 +55,6 @@ const Reports: React.FC = () => {
             const daysInMonthUntilNow = now.getDate();
             trendDays = Array.from({ length: daysInMonthUntilNow }, (_, i) => {
                 const d = new Date(now.getFullYear(), now.getMonth(), i + 1);
-                // Adjust to local ISO string (avoids timezone shift issues with simple toISOString)
                 const offset = d.getTimezoneOffset() * 60000;
                 return new Date(d.getTime() - offset).toISOString().split('T')[0];
             });
@@ -83,7 +79,6 @@ const Reports: React.FC = () => {
                 });
             });
 
-            // achicamos el texto para que no se amontone
             let name = new Date(dateStr + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short' });
             if (timeFilter === 'month') {
                 const d = new Date(dateStr + 'T12:00:00');

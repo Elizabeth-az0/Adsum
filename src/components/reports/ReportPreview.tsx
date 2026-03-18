@@ -62,15 +62,12 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, exportF
 
     const { classInfo, period, students, detailedAttendance } = data;
 
-    // Calcular totales globales para el encabezado
     const totalPresent = students.reduce((acc, s) => acc + s.present, 0);
     const totalAbsent = students.reduce((acc, s) => acc + s.absent, 0);
     const totalJustified = students.reduce((acc, s) => acc + s.justified, 0);
 
-    // Helper to get day from date string
     const getDay = (dateStr: string) => new Date(dateStr + 'T12:00:00').getUTCDate();
 
-    // Generate days for calendar view (only days with records)
     const activeDays = Array.from(new Set(detailedAttendance.map((a) => getDay(a.date)))).sort((a, b) => a - b);
 
     if (exportFormat === 'excel') {

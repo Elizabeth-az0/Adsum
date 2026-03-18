@@ -17,7 +17,7 @@ const Login: React.FC = () => {
         setError('');
 
         try {
-            // Prevenir errores comunes de tipeo (espacios en blanco accidental o mayusculas)
+            
             const cleanUsername = username.trim().toLowerCase();
             const cleanPassword = password.trim();
 

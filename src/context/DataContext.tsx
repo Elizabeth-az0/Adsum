@@ -80,7 +80,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const studentsDict: Record<string, Student> = {};
                 const attendanceRecords: AttendanceRecord[] = [];
 
-                // agrupamos todo por clase y fecha
                 const recordsByClassAndDate: Record<string, Record<string, any[]>> = {};
                 attendanceRaw.forEach((row: any) => {
                     if (!recordsByClassAndDate[row.class_id]) recordsByClassAndDate[row.class_id] = {};
@@ -88,7 +87,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     recordsByClassAndDate[row.class_id][row.date].push({ studentId: row.student_id, status: row.status });
                 });
 
-                // armamos el array final con las asistencias
                 Object.entries(recordsByClassAndDate).forEach(([cId, dates]) => {
                     Object.entries(dates).forEach(([date, recs]) => {
                         attendanceRecords.push({
@@ -100,7 +98,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     });
                 });
 
-                // asosiamos estudiantes a clases global
                 studentsRaw.forEach((st: any) => {
                     const cls = loadedClasses.find(c => c.id === st.class_id);
                     if (cls) {
@@ -116,7 +113,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     };
                 });
 
-                // sacamos las cuentas de las faltas
+                
                 Object.values(studentsDict).forEach(st => {
                     const stats = calculateAttendanceStats(st.id, attendanceRecords);
                     st.attendanceHistory = stats;
@@ -183,7 +180,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const dataToUpdate: any = {};
         if (updatedClass.name) dataToUpdate.name = updatedClass.name;
         if (updatedClass.grado || updatedClass.seccion) {
-            // armamos el string del grado por si aca
             const gradeStr = `${updatedClass.grado || ''}|${updatedClass.seccion || 'A'}`;
             dataToUpdate.grade = gradeStr;
         }
@@ -225,7 +221,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const nextStudents = { ...prev.students };
                 delete nextStudents[studentId];
 
-                // Limpiamos de la asistencia también para no ver fantasmas en los reportes
                 const nextAttendance = prev.attendance.map(a => ({
                     ...a,
                     records: a.records.filter(r => r.studentId !== studentId)
@@ -242,14 +237,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const updateUser = useCallback(async (id: string, updatedUser: Partial<User> & { password?: string }) => {
-        // el dire cambia info de otros profes por acá
         try {
             if (updatedUser.name || updatedUser.role || updatedUser.password) {
                 await api.updateUser(id, updatedUser);
             }
             setDataState(prev => {
                 const updatedProps = { ...updatedUser };
-                delete updatedProps.password; // Don't save password in local state
+                delete updatedProps.password; 
                 return {
                     ...prev,
                     users: prev.users.map(u => u.id === id ? { ...u, ...updatedProps } : u)
@@ -327,7 +321,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     records: record.records.map(r => ({ student_id: r.studentId, status: r.status }))
                 });
             } catch (apiError: any) {
-                // If it's a network error or explicitly offline, fallback to queue
                 if (!navigator.onLine || apiError.message === 'Failed to fetch' || apiError.name === 'TypeError') {
                     const { saveToOfflineQueue } = await import('../lib/offlineQueue');
                     await saveToOfflineQueue({
@@ -340,7 +333,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                     window.dispatchEvent(new Event('sync-offline-triggered'));
 
-                    // Update state locally since we saved to the queue 
                     setDataState(prev => {
                         const filteredAttendance = prev.attendance.filter(a => !(a.classId === record.classId && a.date === record.date));
                         const newAttendance = [...filteredAttendance, record];
@@ -362,12 +354,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         return { ...prev, attendance: newAttendance, students: nextStudents };
                     });
 
-                    // Throw specific error for UI to show nice offline message
                     const offlineError = new Error('OFFLINE_SAVED');
                     offlineError.name = 'OFFLINE_SAVED';
                     throw offlineError;
                 }
-                throw apiError; // It's a real API logic error, bubble up
+                throw apiError; 
             }
 
             setDataState(prev => {

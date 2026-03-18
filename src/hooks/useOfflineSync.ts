@@ -38,7 +38,6 @@ export const useOfflineSync = () => {
                             }
                         }
 
-                        // Attempt sending
                         await api.saveAttendance({
                             class_id: record.classId,
                             date: record.date,
@@ -78,8 +77,6 @@ export const useOfflineSync = () => {
             handleOffline();
         }
 
-        // poll queue check sometimes? Not really necessary since any action that adds to it could trigger a sync when back online
-        // Let's add a custom event to re-trigger check
         window.addEventListener('sync-offline-triggered', syncOfflineQueue);
 
         return () => {

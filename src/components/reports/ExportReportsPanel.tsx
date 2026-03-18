@@ -49,7 +49,6 @@ const ExportReportsPanel: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
 
-    // Filter classes based on role
     const availableClasses = data.classes.filter(c =>
         user?.role === 'DIRECTOR' || c.professorId === user?.id
     );

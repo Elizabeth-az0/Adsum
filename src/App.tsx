@@ -5,7 +5,6 @@ import { DataProvider } from './context/DataContext';
 import { SettingsProvider } from './context/SettingsContext';
 import Layout from './components/Layout';
 
-// Lazy loaded routes
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Attendance = lazy(() => import('./pages/Attendance'));

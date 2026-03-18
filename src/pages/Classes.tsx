@@ -28,7 +28,7 @@ const Classes: React.FC = () => {
     const [newStudentLastName, setNewStudentLastName] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
 
-    // el dire maneja los salones acá
+    
     const [newClass, setNewClass] = useState({ name: '', grado: '', seccion: '', professorId: '' });
     const [editingClassId, setEditingClassId] = useState<string | null>(null);
 
@@ -36,7 +36,7 @@ const Classes: React.FC = () => {
     const [success, setSuccess] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // para confirmar cuando se borra algo
+    
     const [classToDelete, setClassToDelete] = useState<string | null>(null);
     const [studentToRemove, setStudentToRemove] = useState<string | null>(null);
 

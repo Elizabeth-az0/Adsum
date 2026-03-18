@@ -8,7 +8,6 @@ const Admin: React.FC = () => {
     const { data, resetData, updateUser, addUser, deleteUser } = useData();
     const { user } = useAuth();
 
-    // info para crear o editar profes
     const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'PROFESSOR' as 'PROFESSOR' | 'DIRECTOR' });
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [userToDelete, setUserToDelete] = useState<string | null>(null);
@@ -28,7 +27,7 @@ const Admin: React.FC = () => {
         setIsSubmitting(true);
 
         try {
-            // client validation: evitar duplicados en el lado de UI
+            
             const exists = data.users.some(u => u.username === newUser.username && u.id !== editingUserId);
             if (exists) {
                 throw new Error('El nombre de usuario ya está en uso');

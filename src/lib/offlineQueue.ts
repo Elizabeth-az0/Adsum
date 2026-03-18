@@ -5,9 +5,9 @@ const DB_VERSION = 1;
 const STORE_NAME = 'sync_queue';
 
 export interface OfflineRecord {
-    id: string; // uuid
+    id: string; 
     classId: string;
-    date: string; // "YYYY-MM-DD"
+    date: string; 
     records: { studentId: string; status: 'PRESENT' | 'ABSENT' | 'JUSTIFIED' }[];
     timestamp: number;
 }

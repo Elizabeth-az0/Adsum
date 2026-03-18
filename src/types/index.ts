@@ -19,12 +19,12 @@ export interface Student {
         justified: number;
         total: number;
     };
-    risk: boolean; // si tiene 10 o más faltas
+    risk: boolean; 
 }
 
 export interface AttendanceRecord {
     id: string;
-    date: string; // fecha formato tranqui YYYY-MM-DD
+    date: string; 
     classId: string;
     records: {
         studentId: string;
@@ -34,16 +34,16 @@ export interface AttendanceRecord {
 
 export interface ClassGroup {
     id: string;
-    name: string; // ej. Mates piolas
-    grado: string; // ej. 1ro
-    seccion: string; // ej. A
-    professorId: string; // el id del profe
+    name: string; 
+    grado: string; 
+    seccion: string; 
+    professorId: string; 
     studentIds: string[];
 }
 
 export interface AppData {
     users: User[];
     classes: ClassGroup[];
-    students: Record<string, Student>; // mapeado por id para buscar rápido
+    students: Record<string, Student>; 
     attendance: AttendanceRecord[];
 }

@@ -11,19 +11,16 @@ const Dashboard: React.FC = () => {
 
     const today = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    // sacamos los números gruesos del día
     const stats = useMemo(() => {
         let totalStudents = 0;
         let totalPresent = 0;
         let totalAbsent = 0;
         let riskCount = 0;
 
-        // vemos si eres profe o dire para traer tus cosas
         const myClasses = data.classes.filter(c =>
             user?.role === 'DIRECTOR' || c.professorId === user?.id
         );
 
-        // nos quedamos con nuestros alumnos sin repetir
         const myStudentIds = new Set<string>();
         myClasses.forEach(c => c.studentIds.forEach(id => myStudentIds.add(id)));
 
@@ -32,15 +29,12 @@ const Dashboard: React.FC = () => {
             if (s) {
                 totalStudents++;
                 if (s.risk) riskCount++;
-                // chequeamos en la lista de hoy a ver qué onda
             }
         });
 
-        // asis de hoy
         const todayISO = getLocalISODate();
         const todaysRecords = data.attendance.filter(r => r.date === todayISO);
 
-        // solo mis salones
         const myClassIds = myClasses.map(c => c.id);
         const myTodaysRecords = todaysRecords.filter(r => myClassIds.includes(r.classId));
 
@@ -51,7 +45,6 @@ const Dashboard: React.FC = () => {
             });
         });
 
-        // el ref de porcentaje de hoy
 
         const attendanceRate = (totalPresent + totalAbsent) > 0
             ? Math.round((totalPresent / (totalPresent + totalAbsent)) * 100)

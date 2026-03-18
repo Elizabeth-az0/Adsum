@@ -1,6 +1,4 @@
 const PROD_API_URL = 'https://adsum-api.elizabethgaldames35.workers.dev/api';
-// Si estamos en localhost pero no hay una variable VITE_API_URL definida, 
-// podríamos querer usar la de producción igualmente.
 const API_URL = import.meta.env.VITE_API_URL || PROD_API_URL;
 
 console.log('Using API URL:', API_URL);
@@ -23,14 +21,12 @@ const checkError = async (res: Response, defaultMessage: string) => {
 };
 
 export const api = {
-    // Initial fetch to fix N+1
     getInitData: async (signal?: AbortSignal) => {
         const res = await fetch(`${API_URL}/init`, { headers: getHeaders(), signal });
         await checkError(res, 'Error al cargar datos iniciales');
         return res.json();
     },
 
-    // auth / login
     login: async (credentials: any) => {
         const res = await fetch(`${API_URL}/login`, {
             method: 'POST',
@@ -41,7 +37,6 @@ export const api = {
         return res.json();
     },
 
-    // profes y dire
     getUsers: async () => {
         const res = await fetch(`${API_URL}/users`, { headers: getHeaders() });
         await checkError(res, 'Error al cargar usuarios');
@@ -74,7 +69,6 @@ export const api = {
         return res.json();
     },
 
-    // salones
     getClasses: async () => {
         const res = await fetch(`${API_URL}/classes`, { headers: getHeaders() });
         await checkError(res, 'Error al cargar clases');
@@ -107,7 +101,6 @@ export const api = {
         return res.json();
     },
 
-    // los alumnos
     getStudents: async (classId: string, signal?: AbortSignal) => {
         const res = await fetch(`${API_URL}/students/${classId}`, { headers: getHeaders(), signal });
         await checkError(res, 'Error al cargar estudiantes');
@@ -131,7 +124,6 @@ export const api = {
         return res.json();
     },
 
-    // la asistencia
     getAttendance: async (classId?: string, date?: string, signal?: AbortSignal) => {
         let url = `${API_URL}/attendance`;
         const params = new URLSearchParams();
@@ -161,7 +153,6 @@ export const api = {
         return res.json();
     },
 
-    // data para reportes
     getReports: async (from: string, to: string, signal?: AbortSignal) => {
         const res = await fetch(`${API_URL}/reports?from=${from}&to=${to}`, { headers: getHeaders(), signal });
         await checkError(res, 'Error al cargar reportes');

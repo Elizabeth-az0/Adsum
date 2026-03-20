@@ -128,6 +128,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.error("Failed to load initial data", err);
                 if (err.message === 'UNAUTHORIZED' && mounted) {
                     resetData();
+                } else if (mounted) {
+                    try {
+                        const cached = localStorage.getItem(`adsum_cache_${user.id}`);
+                        if (cached) {
+                            setDataState(JSON.parse(cached));
+                            console.log("Cargado desde caché offline");
+                        }
+                    } catch (e) {
+                        console.error('Error leyendo caché offline', e);
+                    }
                 }
             } finally {
                 if (mounted) setIsLoading(false);
@@ -142,6 +152,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             controller.abort();
         };
     }, [user]);
+
+    useEffect(() => {
+        if (user && data !== defaultData) {
+            try {
+                localStorage.setItem(`adsum_cache_${user.id}`, JSON.stringify(data));
+            } catch (e) {
+                console.error('Error al guardar caché local', e);
+            }
+        }
+    }, [data, user]);
 
     const saveData = useCallback((newData: AppData) => setDataState(newData), []);
 

@@ -81,7 +81,7 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, exportF
 
                 <div className="overflow-x-auto border-t border-l border-slate-200">
                     {reportType === 'summary' && (
-                        <table className="min-w-full border-r border-b border-slate-200">
+                        <table className="w-full min-w-max border-r border-b border-slate-200">
                             <thead>
                                 <tr className="bg-slate-50">
                                     <th className="border-r border-b border-slate-200 p-2 text-left font-bold text-slate-700">Estudiante</th>
@@ -105,7 +105,7 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, exportF
                         </table>
                     )}
                     {reportType === 'history' && (
-                        <table className="min-w-full border-r border-b border-slate-200">
+                        <table className="w-full min-w-max border-r border-b border-slate-200">
                             <thead>
                                 <tr className="bg-slate-50">
                                     <th className="border-r border-b border-slate-200 p-2 text-left font-bold text-slate-700">Fecha</th>
@@ -132,7 +132,7 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, exportF
                     )}
 
                     {reportType === 'calendar' && (
-                        <table className="min-w-full border-r border-b border-slate-200">
+                        <table className="w-full min-w-max border-r border-b border-slate-200">
                             <thead>
                                 <tr className="bg-slate-50">
                                     <th className="border-r border-b border-slate-200 p-2 text-left font-bold text-slate-700">Estudiante</th>
@@ -208,7 +208,7 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, exportF
             <div className="p-0">
                 <div className="overflow-x-auto">
                     {reportType === 'summary' && (
-                        <table className="min-w-full divide-y divide-slate-200">
+                        <table className="w-full min-w-max divide-y divide-slate-200">
                             <thead>
                                 <tr className="bg-slate-50">
                                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Estudiante</th>
@@ -240,7 +240,7 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, exportF
                     )}
 
                     {reportType === 'history' && (
-                        <table className="min-w-full divide-y divide-slate-200">
+                        <table className="w-full min-w-max divide-y divide-slate-200">
                             <thead>
                                 <tr className="bg-slate-50">
                                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Fecha</th>
@@ -272,7 +272,7 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, reportType, exportF
                     )}
 
                     {reportType === 'calendar' && (
-                        <table className="min-w-full divide-x divide-y divide-slate-200 border border-slate-200">
+                        <table className="w-full min-w-max divide-x divide-y divide-slate-200 border border-slate-200">
                             <thead>
                                 <tr className="bg-slate-50">
                                     <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase border-r border-slate-200">Estudiante</th>

@@ -183,8 +183,8 @@ const Reports: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                <div className="overflow-x-auto pb-2">
+                    <table className="w-full text-left min-w-max">
                         <thead>
                             <tr className="border-b border-slate-100 text-slate-500 text-sm">
                                 <th className="pb-4 font-medium">Estudiante</th>

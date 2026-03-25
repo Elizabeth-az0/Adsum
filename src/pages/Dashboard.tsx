@@ -159,7 +159,7 @@ const Dashboard: React.FC = () => {
                                     </div>
 
                                     <Link
-                                        to={isTaken ? `/reports` : `/attendance?classId=${cls.id}`}
+                                        to={isTaken ? `/reports?classId=${cls.id}` : `/attendance?classId=${cls.id}`}
                                         className={cn(
                                             "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-colors",
                                             isTaken

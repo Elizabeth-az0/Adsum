@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -8,13 +9,44 @@ import ConfirmModal from '../components/ConfirmModal';
 const Reports: React.FC = () => {
     const { data, resetData } = useData();
     const { user } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const classIdParam = searchParams.get('classId');
+
     const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month'>('week');
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
     const myClasses = data.classes.filter(c =>
         user?.role === 'DIRECTOR' || c.professorId === user?.id
     );
-    const myClassIds = myClasses.map(c => c.id);
+    
+    // Memoizing myClassIds to avoid recreating it every render
+    const myClassIds = useMemo(() => myClasses.map(c => c.id), [myClasses]);
+
+    const [selectedClassId, setSelectedClassId] = useState<string>('all');
+
+    useEffect(() => {
+        if (classIdParam && myClassIds.includes(classIdParam)) {
+            setSelectedClassId(classIdParam);
+        } else if (!classIdParam) {
+            setSelectedClassId('all');
+        }
+    }, [classIdParam, myClassIds]);
+
+    const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        setSelectedClassId(value);
+        const newParams = new URLSearchParams(searchParams);
+        if (value === 'all') {
+            newParams.delete('classId');
+        } else {
+            newParams.set('classId', value);
+        }
+        setSearchParams(newParams);
+    };
+
+    const targetClassIds = useMemo(() => {
+        return selectedClassId === 'all' ? myClassIds : [selectedClassId];
+    }, [selectedClassId, myClassIds]);
 
     const filteredAttendance = useMemo(() => {
         const now = new Date();
@@ -33,15 +65,15 @@ const Reports: React.FC = () => {
 
         return data.attendance.filter(r => {
             const rDate = new Date(r.date + 'T12:00:00'); 
-            return myClassIds.includes(r.classId) && rDate >= threshold && rDate <= now;
+            return targetClassIds.includes(r.classId) && rDate >= threshold && rDate <= now;
         });
-    }, [data.attendance, timeFilter, myClassIds]);
+    }, [data.attendance, timeFilter, targetClassIds]);
 
     const riskStudents = useMemo(() => {
         return Object.values(data.students)
-            .filter(s => s.risk && myClassIds.some(cid => data.classes.find(c => c.id === cid)?.studentIds.includes(s.id)))
+            .filter(s => s.risk && targetClassIds.some(cid => data.classes.find(c => c.id === cid)?.studentIds.includes(s.id)))
             .sort((a, b) => b.attendanceHistory.absent - a.attendanceHistory.absent);
-    }, [data.students, myClassIds, data.classes]);
+    }, [data.students, targetClassIds, data.classes]);
 
     const chartData = useMemo(() => {
         let totalPresent = 0;
@@ -102,19 +134,32 @@ const Reports: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h1 className="text-2xl font-bold text-slate-900">Reportes y Estadísticas</h1>
 
-                <div className="flex gap-2 bg-white p-1 rounded-xl border border-slate-200">
-                    {(['today', 'week', 'month'] as const).map(filter => (
-                        <button
-                            key={filter}
-                            onClick={() => setTimeFilter(filter)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${timeFilter === filter
-                                ? 'bg-primary-100 text-primary-700'
-                                : 'text-slate-600 hover:bg-slate-50'
-                                }`}
-                        >
-                            {filter === 'today' ? 'Hoy' : filter === 'week' ? 'Semana' : 'Mes'}
-                        </button>
-                    ))}
+                <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                    <select
+                        value={selectedClassId}
+                        onChange={handleClassChange}
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                    >
+                        <option value="all">Todas las Aulas</option>
+                        {myClasses.map(c => (
+                            <option key={c.id} value={c.id}>{c.name} ({c.grado} {c.seccion})</option>
+                        ))}
+                    </select>
+
+                    <div className="flex gap-2 bg-white p-1 rounded-xl border border-slate-200">
+                        {(['today', 'week', 'month'] as const).map(filter => (
+                            <button
+                                key={filter}
+                                onClick={() => setTimeFilter(filter)}
+                                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-colors ${timeFilter === filter
+                                    ? 'bg-primary-100 text-primary-700'
+                                    : 'text-slate-600 hover:bg-slate-50'
+                                    }`}
+                            >
+                                {filter === 'today' ? 'Hoy' : filter === 'week' ? 'Semana' : 'Mes'}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 

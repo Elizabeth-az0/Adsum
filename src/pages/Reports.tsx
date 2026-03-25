@@ -183,7 +183,7 @@ const Reports: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto pb-2">
+                <div className="hidden md:block overflow-x-auto pb-2">
                     <table className="w-full text-left min-w-max">
                         <thead>
                             <tr className="border-b border-slate-100 text-slate-500 text-sm">
@@ -200,7 +200,7 @@ const Reports: React.FC = () => {
                                         <tr key={student.id} className="group hover:bg-slate-50 transition-colors">
                                             <td className="py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 shrink-0">
                                                         {student.firstName[0]}{student.lastName[0]}
                                                     </div>
                                                     <span className="font-medium text-slate-900">{student.firstName} {student.lastName}</span>
@@ -227,6 +227,42 @@ const Reports: React.FC = () => {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                <div className="block md:hidden space-y-4">
+                    {riskStudents.length > 0 ? (
+                        riskStudents.map(student => {
+                            const className = data.classes.find(c => c.studentIds.includes(student.id))?.name || 'N/A';
+                            return (
+                                <div key={student.id} className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center font-bold text-slate-500 shadow-sm shrink-0">
+                                            {student.firstName[0]}{student.lastName[0]}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-900 leading-tight">{student.firstName} {student.lastName}</h4>
+                                            <p className="text-sm text-slate-500">{className}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-100">
+                                        <div className="text-center flex-1">
+                                            <p className="text-xs text-slate-500 font-medium uppercase mb-1">Faltas</p>
+                                            <p className="font-bold text-red-600 text-lg leading-none">{student.attendanceHistory.absent} <span className="text-xs text-slate-400 font-normal">/ 30</span></p>
+                                        </div>
+                                        <div className="w-px h-8 bg-slate-100"></div>
+                                        <div className="text-center flex-1">
+                                            <p className="text-xs text-slate-500 font-medium uppercase mb-1">Presente</p>
+                                            <p className="font-bold text-emerald-600 text-lg leading-none">{student.attendanceHistory.present} <span className="text-xs text-slate-400 font-normal">días</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="py-8 text-center text-slate-500 bg-slate-50 rounded-xl border border-slate-100">
+                            No hay estudiantes con 10 o más faltas.
+                        </div>
+                    )}
                 </div>
             </div>
 

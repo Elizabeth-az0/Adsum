@@ -162,7 +162,7 @@ const Classes: React.FC = () => {
             )}
 
             {isDirector && (
-                <div className="flex gap-4 border-b border-slate-200">
+                <div className="flex gap-4 border-b border-slate-200 overflow-x-auto whitespace-nowrap hide-scrollbar">
                     <button
                         onClick={() => setActiveTab('manage_classes')}
                         className={`pb-4 px-2 font-medium transition-colors relative ${activeTab === 'manage_classes' ? 'text-primary-600' : 'text-slate-500 hover:text-slate-700'
@@ -278,7 +278,7 @@ const Classes: React.FC = () => {
                                             <span>{c.studentIds.length} Estudiantes</span>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 w-full justify-end sm:w-auto sm:justify-start mt-4 sm:mt-0">
                                         <button
                                             onClick={() => handleEditClass(c)}
                                             className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
@@ -301,7 +301,7 @@ const Classes: React.FC = () => {
 
             {activeTab === 'students' && (
                 <>
-                    <div className="flex flex-col md:flex-row items-center gap-4 mb-4">
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-4">
                         <span className="font-medium text-slate-700">Seleccionar Aula:</span>
                         <select
                             value={selectedClassId}
@@ -367,7 +367,7 @@ const Classes: React.FC = () => {
 
                             <div className="lg:col-span-2">
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                                    <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
                                                 <Users className="w-5 h-5" />
@@ -403,7 +403,7 @@ const Classes: React.FC = () => {
 
                                                     <button
                                                         onClick={() => setStudentToRemove(student.id)}
-                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors md:opacity-0 group-hover:opacity-100"
                                                         title="Eliminar"
                                                     >
                                                         <Trash2 className="w-5 h-5" />
@@ -428,8 +428,8 @@ const Classes: React.FC = () => {
             )}
 
             {editingClassId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden scale-in animate-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto pt-20 pb-20">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden scale-in animate-in zoom-in-95 duration-200 mt-auto mb-auto">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-primary-50">
                             <h2 className="text-xl font-bold text-primary-900 flex items-center gap-2">
                                 <Pencil className="w-5 h-5" />
